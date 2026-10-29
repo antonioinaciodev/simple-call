@@ -1,5 +1,4 @@
-import { createLocalVideoTrack, type LocalVideoTrack } from 'livekit-client';
-import { Mic, MicOff, Video, VideoOff } from 'lucide-react';
+import { ArrowLeft, Mic, MicOff, Video, VideoOff } from 'lucide-react';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { SetPrefs } from '../App';
 import type { Prefs } from '../lib/prefs';
@@ -10,32 +9,73 @@ interface Props {
   prefs: Prefs;
   setPrefs: SetPrefs;
   onJoin: () => Promise<void>;
+  onBack: () => void;
 }
 
-export function PreJoin({ code, prefs, setPrefs, onJoin }: Props) {
+function mediaError(err: unknown, what: string) {
+  const name = err instanceof DOMException ? err.name : '';
+  if (name === 'NotAllowedError') return `Sem permissão pro ${what}. Libere no cadeado ao lado do endereço do site.`;
+  if (name === 'NotFoundError') return `Nenhum ${what} encontrado.`;
+  if (name === 'NotReadableError') return `O ${what} está sendo usado por outro programa.`;
+  return `Não deu pra abrir o ${what}.`;
+}
+
+const stopAll = (s: MediaStream) => s.getTracks().forEach((t) => t.stop());
+
+export function PreJoin({ code, prefs, setPrefs, onJoin, onBack }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [camError, setCamError] = useState('');
+  const [micError, setMicError] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  // O pedido de permissão do microfone é feito uma vez só aqui, pra não aparecer no meio da call.
+  const micAsked = useRef(false);
 
-  // Prévia da câmera: só abre a câmera se ela estiver ligada, e fecha ao sair da tela.
+  // Câmera: prévia ao vivo, fechada ao desligar ou sair da tela. Na primeira vez já pede o
+  // microfone junto, pra que o navegador mostre um pedido de permissão só.
   useEffect(() => {
     if (!prefs.camOn) return;
-    let track: LocalVideoTrack | undefined;
+    const withMic = prefs.micOn && !micAsked.current;
+    if (withMic) micAsked.current = true;
+    let stream: MediaStream | undefined;
     let cancelled = false;
-    createLocalVideoTrack({ resolution: { width: 1280, height: 720 } })
-      .then((t) => {
-        if (cancelled) return t.stop();
-        track = t;
-        if (videoRef.current) t.attach(videoRef.current);
+    navigator.mediaDevices
+      .getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 } }, audio: withMic })
+      .then((s) => {
+        // O microfone só precisava da permissão; quem captura de verdade é a call.
+        s.getAudioTracks().forEach((t) => t.stop());
+        if (cancelled) return stopAll(s);
+        stream = s;
+        if (videoRef.current) videoRef.current.srcObject = s;
         setCamError('');
+        if (withMic) setMicError('');
       })
-      .catch(() => setCamError('Não deu pra abrir a câmera.'));
+      .catch((err) => {
+        if (withMic) micAsked.current = false;
+        setCamError(mediaError(err, withMic ? 'microfone e câmera' : 'câmera'));
+      });
     return () => {
       cancelled = true;
-      track?.stop();
+      if (stream) stopAll(stream);
     };
+    // O estado do microfone só importa no primeiro pedido; mudar o mic não deve reabrir a câmera.
   }, [prefs.camOn]);
+
+  // Microfone ligado sem a câmera (ou ligado depois): pede só a permissão do microfone.
+  useEffect(() => {
+    if (!prefs.micOn || micAsked.current) return;
+    micAsked.current = true;
+    navigator.mediaDevices
+      .getUserMedia({ audio: true })
+      .then((s) => {
+        stopAll(s);
+        setMicError('');
+      })
+      .catch((err) => {
+        micAsked.current = false;
+        setMicError(mediaError(err, 'microfone'));
+      });
+  }, [prefs.micOn]);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -56,7 +96,7 @@ export function PreJoin({ code, prefs, setPrefs, onJoin }: Props) {
       <div className="prejoin">
         <div className="preview">
           {prefs.camOn && !camError ? (
-            <video ref={videoRef} className="mirror" muted playsInline />
+            <video ref={videoRef} className="mirror" autoPlay muted playsInline />
           ) : (
             <div className="avatar large">{initial}</div>
           )}
@@ -102,7 +142,12 @@ export function PreJoin({ code, prefs, setPrefs, onJoin }: Props) {
           <button className="btn primary" type="submit" disabled={busy || !prefs.name.trim()}>
             {busy ? 'Entrando…' : 'Entrar na call'}
           </button>
+          <button className="btn ghost" type="button" onClick={onBack}>
+            <ArrowLeft size={16} />
+            Voltar ao início
+          </button>
           {camError && <p className="error">{camError}</p>}
+          {micError && <p className="error">{micError}</p>}
           {error && <p className="error">{error}</p>}
         </form>
       </div>

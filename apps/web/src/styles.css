@@ -15,12 +15,12 @@
 }
 
 :root[data-theme='light'] {
-  --bg: #fafafa;
-  --surface: #ffffff;
-  --surface-2: #f0f0f0;
-  --surface-3: #e5e5e5;
-  --border: #e5e5e5;
-  --muted: #6b6b6b;
+  --bg: #f5f5f5;
+  --surface: #e4e4e4;
+  --surface-2: #d9d9d9;
+  --surface-3: #c8c8c8;
+  --border: #cfcfcf;
+  --muted: #595959;
   --text: #171717;
   --strong: #0a0a0a;
   --on-strong: #fafafa;
@@ -513,6 +513,43 @@ select.input {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.tile-action {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: var(--overlay);
+  color: var(--text);
+  backdrop-filter: blur(6px);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 150ms;
+}
+
+.tile:hover .tile-action,
+.tile-action:focus-visible,
+.tile:fullscreen .tile-action {
+  opacity: 1;
+}
+
+/* Telas de toque não têm hover: o botão fica sempre visível. */
+@media (hover: none) {
+  .tile-action {
+    opacity: 1;
+  }
+}
+
+.tile:fullscreen {
+  border-radius: 0;
+  background: #000;
 }
 
 .own-screen {

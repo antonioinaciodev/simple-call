@@ -23,7 +23,7 @@ export function RoomPage({ code, prefs, setPrefs, navigate }: Props) {
   }
 
   if (stage.kind === 'prejoin') {
-    return <PreJoin code={code} prefs={prefs} setPrefs={setPrefs} onJoin={join} />;
+    return <PreJoin code={code} prefs={prefs} setPrefs={setPrefs} onJoin={join} onBack={() => navigate('/')} />;
   }
   if (stage.kind === 'call') {
     return (
