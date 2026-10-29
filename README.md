@@ -59,13 +59,13 @@ Pra mudar portas ou chaves, copie `.env.example` pra `.env`.
 - [x] Fase 1: MVP web (call por link, mic, câmera, tela, chat, UI em escala de cinza)
 - [x] Fase 2 (parcial): ajustes de áudio, codec e painel de estatísticas
 - [ ] Fase 2: volume por pessoa, áudio de um dispositivo de entrada como áudio da transmissão
-- [ ] Fase 3: deploy na Oracle Cloud (São Paulo) com HTTPS ([passo a passo](docs/DEPLOY.md))
+- [ ] Fase 3: deploy pra testar com os amigos ([passo a passo](docs/DEPLOY.md))
 - [ ] Talvez, bem mais pra frente: app desktop (push-to-talk global, áudio só do jogo)
 - [ ] Depois: senha ou sala de espera na call
 
 ## Colocando no ar
 
-O [passo a passo de deploy](docs/DEPLOY.md) sobe tudo num servidor grátis da Oracle Cloud em São Paulo com um comando.
+O [passo a passo de deploy](docs/DEPLOY.md) tem duas opções grátis: LiveKit Cloud + Render (sem cartão, bom pra testar) ou um servidor próprio na Oracle Cloud em São Paulo, configurado com um comando.
 
 ## Licença
 

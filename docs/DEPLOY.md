@@ -1,6 +1,50 @@
-# Deploy na Oracle Cloud (grátis)
+# Colocando no ar
 
-Passo a passo pra colocar o Simple Call no ar num servidor Always Free da Oracle em São Paulo. Leva uns 20 minutos, a maior parte esperando a máquina e o build.
+Duas opções, as duas grátis:
+
+| | Nuvem grátis (LiveKit Cloud + Render) | Servidor próprio (Oracle Cloud) |
+| --- | --- | --- |
+| Cartão | Não precisa | Precisa pra verificar a conta |
+| Ping | Mais alto: a mídia passa pelos EUA | Baixo: servidor em São Paulo |
+| Limite | ~50 GB de transmissão por mês | 10 TB por mês |
+| Primeiro acesso | Site "dorme" após 15 min; acordar leva ~1 min | Sempre ligado |
+
+A nuvem grátis é o jeito mais rápido de testar com os amigos. Pro uso no dia a dia, o servidor próprio é melhor.
+
+---
+
+# Opção A: Nuvem grátis
+
+## 1. LiveKit Cloud (áudio, vídeo e chat)
+
+1. Entre em [cloud.livekit.io](https://cloud.livekit.io) com sua conta do GitHub e crie um projeto (ex.: `simple-call`).
+2. Em **Settings → API Keys**, crie uma chave. Anote os três valores:
+   - a URL do projeto, tipo `wss://simple-call-xxxx.livekit.cloud`
+   - a **API Key**
+   - o **API Secret** (só aparece uma vez)
+
+## 2. Render (site + API)
+
+1. Entre em [render.com](https://render.com) com o GitHub.
+2. **New → Blueprint** e escolha o repositório `simple-call`. O Render lê o `render.yaml` e cria o serviço no plano grátis.
+3. Ele pede três variáveis: cole a URL em `LIVEKIT_URL`, a chave em `LIVEKIT_API_KEY` e o segredo em `LIVEKIT_API_SECRET`.
+4. Clique em **Apply** e espere o build (uns 3 minutos). O endereço fica tipo `https://simple-call-xxxx.onrender.com`.
+
+Se o Blueprint pedir cartão, crie na mão: **New → Web Service**, mesmo repositório, plano **Free**, com:
+
+| Campo | Valor |
+| --- | --- |
+| Build Command | `npx pnpm@10 install --frozen-lockfile && npx pnpm@10 build` |
+| Start Command | `NODE_ENV=production node apps/server/dist/index.js` |
+| Variáveis | `NODE_VERSION=22`, `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` |
+
+Cada merge no `main` faz o Render publicar a versão nova sozinho.
+
+---
+
+# Opção B: Servidor próprio na Oracle Cloud
+
+Passo a passo pra colocar o Simple Call num servidor Always Free da Oracle em São Paulo. Leva uns 20 minutos, a maior parte esperando a máquina e o build.
 
 No fim você tem o app em `https://call.SEU-IP.sslip.io`, com HTTPS, sem comprar domínio.
 
