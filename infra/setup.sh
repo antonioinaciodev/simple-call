@@ -23,7 +23,7 @@ fi
 log "Instalando Docker e Git"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
-apt-get install -y -qq docker.io docker-compose-v2 git curl openssl >/dev/null
+apt-get install -y -qq docker.io docker-compose-v2 docker-buildx git curl openssl >/dev/null
 systemctl enable --now docker >/dev/null
 
 log "Liberando portas no firewall do sistema"
@@ -49,7 +49,13 @@ fi
 ENV_FILE="$DIR/infra/.env"
 if [ ! -f "$ENV_FILE" ]; then
   log "Gerando configuração e chaves"
-  PUBLIC_IP="$(curl -4 -fsS https://api.ipify.org)"
+  # IP público: tenta alguns serviços (ou use PUBLIC_IP=... na frente do comando).
+  PUBLIC_IP="${PUBLIC_IP:-$(curl -4 -fsS https://api.ipify.org || curl -4 -fsS https://ifconfig.me || curl -4 -fsS https://icanhazip.com || true)}"
+  PUBLIC_IP="$(echo "$PUBLIC_IP" | tr -d '[:space:]')"
+  if [ -z "$PUBLIC_IP" ]; then
+    echo "Não consegui descobrir o IP público. Rode de novo com PUBLIC_IP=SEU-IP na frente." >&2
+    exit 1
+  fi
   DASHED="${PUBLIC_IP//./-}"
   cat >"$ENV_FILE" <<CONF
 APP_DOMAIN=${APP_DOMAIN:-call.$DASHED.sslip.io}
