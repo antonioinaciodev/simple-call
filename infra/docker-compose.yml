@@ -1,5 +1,6 @@
 # Deploy num servidor só (ex.: Oracle Cloud Always Free em São Paulo).
-# Rascunho da fase 3: ainda não foi testado num servidor de verdade.
+# O jeito fácil é o infra/setup.sh, que gera o .env e roda este arquivo (veja docs/DEPLOY.md).
+# Na mão:
 #
 #   cp infra/.env.example infra/.env   # e preencha
 #   docker compose -f infra/docker-compose.yml --env-file infra/.env up -d --build

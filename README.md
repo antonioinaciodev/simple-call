@@ -51,18 +51,21 @@ Pra mudar portas ou chaves, copie `.env.example` pra `.env`.
 
 ## Limitações conhecidas
 
-- **Áudio do jogo no Linux:** o navegador só consegue mandar o áudio de uma aba do Chrome junto com a tela, não o áudio do sistema ou de um jogo. No Windows funciona ao escolher "Tela inteira". O app desktop (fase 4) resolve isso.
+- **Áudio do jogo no Linux:** o navegador só consegue mandar o áudio de uma aba do Chrome junto com a tela, não o áudio do sistema ou de um jogo. No Windows funciona ao escolher "Tela inteira". Um app desktop resolveria isso.
 - **Push-to-talk com o jogo em foco** também depende do app desktop, porque o navegador só recebe teclas com a aba em foco.
-- O deploy em `infra/` ainda é um rascunho e não foi testado num servidor de verdade.
 
 ## Roadmap
 
 - [x] Fase 1: MVP web (call por link, mic, câmera, tela, chat, UI em escala de cinza)
 - [x] Fase 2 (parcial): ajustes de áudio, codec e painel de estatísticas
 - [ ] Fase 2: volume por pessoa, áudio de um dispositivo de entrada como áudio da transmissão
-- [ ] Fase 3: deploy na Oracle Cloud (São Paulo) com domínio e HTTPS
-- [ ] Fase 4: app desktop em Electron (áudio só do jogo, push-to-talk global)
+- [ ] Fase 3: deploy pra testar com os amigos ([passo a passo](docs/DEPLOY.md))
+- [ ] Talvez, bem mais pra frente: app desktop (push-to-talk global, áudio só do jogo)
 - [ ] Depois: senha ou sala de espera na call
+
+## Colocando no ar
+
+O [passo a passo de deploy](docs/DEPLOY.md) tem duas opções grátis: LiveKit Cloud + Render (sem cartão, bom pra testar) ou um servidor próprio na Oracle Cloud em São Paulo, configurado com um comando.
 
 ## Licença
 
