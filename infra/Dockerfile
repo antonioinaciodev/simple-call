@@ -5,6 +5,7 @@ RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/web/package.json apps/web/
 COPY apps/server/package.json apps/server/
+COPY tools/livekit/package.json tools/livekit/
 RUN pnpm install --frozen-lockfile
 COPY apps apps
 RUN pnpm build && pnpm prune --prod

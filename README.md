@@ -29,25 +29,23 @@ Quem transmite manda o vídeo **uma vez** pro servidor de mídia ([LiveKit](http
 | --- | --- |
 | `apps/web` | Front em React + Vite + TypeScript |
 | `apps/server` | API que cria calls e assina tokens do LiveKit |
+| `tools/livekit` | Baixa e roda o LiveKit em modo dev, sem instalar nada |
 | `infra` | Docker Compose, config do LiveKit e Caddy pro deploy |
 
 ## Rodando no seu PC
 
-Precisa de Node 22+, pnpm e o servidor do LiveKit.
+Só precisa do **Node 22+** e do **Git**. Nada é instalado no sistema: o pnpm roda via `npx` e o servidor do LiveKit é baixado pra dentro do projeto (`tools/livekit/.bin`) na primeira vez.
 
 ```bash
-# 1. LiveKit (Linux/macOS). No Linux também dá pra baixar o binário em github.com/livekit/livekit/releases
-curl -sSL https://get.livekit.io | bash
-
-# 2. Em um terminal, sobe o LiveKit em modo dev (chaves devkey/secret)
-livekit-server --dev
-
-# 3. Em outro terminal, instala e sobe a API + o front
-pnpm install
-pnpm dev
+git clone https://github.com/antonioinaciodev/simple-call
+cd simple-call
+npx pnpm@10 install
+npx pnpm@10 dev
 ```
 
-Abra http://localhost:5173, clique em **Nova call** e abra o mesmo link em outra aba ou navegador pra simular um amigo.
+O `dev` sobe as três peças juntas: LiveKit (ws://localhost:7880), API (porta 3001) e o front em http://localhost:5173. Clique em **Nova call** e abra o mesmo link em outra aba ou navegador pra simular um amigo.
+
+No Windows, na primeira vez o firewall pode perguntar se o `livekit-server` pode usar a rede: permita em redes privadas. No macOS o LiveKit não tem binário pronto; instale com `brew install livekit`.
 
 Pra mudar portas ou chaves, copie `.env.example` pra `.env`.
 
