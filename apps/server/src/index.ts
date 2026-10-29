@@ -6,6 +6,13 @@ import { Hono } from 'hono';
 import { AccessToken } from 'livekit-server-sdk';
 import { cleanName, isRoomCode, newRoomCode } from './rooms.js';
 
+// Carrega o .env da raiz do repositório, se existir (vale pra src/ e dist/).
+try {
+  process.loadEnvFile(resolve(import.meta.dirname, '../../../.env'));
+} catch {
+  // Sem .env: usa as variáveis do ambiente e os padrões do modo dev.
+}
+
 const PORT = Number(process.env.PORT ?? 3001);
 const LIVEKIT_URL = process.env.LIVEKIT_URL ?? 'ws://localhost:7880';
 const API_KEY = process.env.LIVEKIT_API_KEY ?? 'devkey';
