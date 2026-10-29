@@ -65,3 +65,7 @@ Pra mudar portas ou chaves, copie `.env.example` pra `.env`.
 - [ ] Fase 3: deploy na Oracle Cloud (São Paulo) com domínio e HTTPS
 - [ ] Fase 4: app desktop em Electron (áudio só do jogo, push-to-talk global)
 - [ ] Depois: senha ou sala de espera na call
+
+## Licença
+
+[MIT](LICENSE)

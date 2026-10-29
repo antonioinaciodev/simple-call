@@ -9,5 +9,6 @@
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
     "start": "pnpm --filter @simple-call/server start"
-  }
+  },
+  "license": "MIT"
 }
