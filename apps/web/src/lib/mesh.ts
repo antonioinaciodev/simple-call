@@ -29,10 +29,16 @@ export interface Peer {
   queue: Promise<void>;
   // O que eu mando pra essa pessoa, um transceiver por tipo, reaproveitado a cada liga/desliga.
   sending: Partial<Record<MediaKind, RTCRtpTransceiver>>;
-  // O que ela me manda: o tipo de cada faixa (pelo mid) e se o mic dela está ligado.
+  // O que ela me manda: o tipo de cada faixa (pelo mid), se o mic dela está ligado e se ela
+  // desligou o som da call. stateKnown: já recebi o estado dela pelo menos uma vez.
   remoteKinds: Record<string, MediaKind>;
   micOn: boolean;
+  deafened: boolean;
+  stateKnown: boolean;
 }
+
+// Mudanças nas outras pessoas que viram som na call.
+export type PeerEvent = 'join' | 'leave' | 'mute' | 'unmute' | 'deafen' | 'undeafen';
 
 export interface RemoteMedia {
   mic?: MediaStreamTrack;
@@ -54,6 +60,7 @@ interface Options {
   audio: AudioSettings;
   onChange: () => void;
   onChat: (m: ChatMessage) => void;
+  onPeerEvent: (e: PeerEvent) => void;
   onClose: (reason: string) => void;
 }
 
@@ -68,7 +75,7 @@ type ServerMsg =
 type SignalData = { description: RTCSessionDescriptionInit } | { candidate: RTCIceCandidateInit } | { reset: true };
 
 type PeerMsg =
-  | { type: 'state'; micOn: boolean; kinds: Record<string, MediaKind> }
+  | { type: 'state'; micOn: boolean; deafened?: boolean; kinds: Record<string, MediaKind> }
   | { type: 'chat'; id: string; text: string; timestamp: number };
 
 const CAMERA_ENCODING: RTCRtpEncodingParameters = { maxBitrate: 1_200_000, maxFramerate: 30 };
@@ -82,6 +89,8 @@ export class Mesh {
   camera: MediaStreamTrack | null = null;
   screen: MediaStream | null = null;
   screenPreset: ScreenPreset | null = null;
+  // Som da call desligado (e o mic junto), como o "ensurdecer" do Discord.
+  deafened = false;
   private ws: WebSocket;
   private closed = false;
   private joined = false;
@@ -120,6 +129,16 @@ export class Mesh {
   setMic(track: MediaStreamTrack | null) {
     if (this.mic !== track) this.mic?.stop();
     this.mic = track;
+    for (const p of this.peers.values()) this.attach(p, 'mic');
+    this.broadcastState();
+    this.opts.onChange();
+  }
+
+  // Liga ou desliga o som da call junto com o mic, num aviso só pras outras pessoas.
+  setDeafened(deafened: boolean, mic: MediaStreamTrack | null) {
+    this.deafened = deafened;
+    if (this.mic !== mic) this.mic?.stop();
+    this.mic = mic;
     for (const p of this.peers.values()) this.attach(p, 'mic');
     this.broadcastState();
     this.opts.onChange();
@@ -226,7 +245,7 @@ export class Mesh {
   private sendState(peer: Peer) {
     const kinds: Record<string, MediaKind> = {};
     for (const [kind, tx] of Object.entries(peer.sending)) if (tx.mid) kinds[tx.mid] = kind as MediaKind;
-    this.sendPeer(peer, { type: 'state', micOn: !!this.mic, kinds });
+    this.sendPeer(peer, { type: 'state', micOn: !!this.mic, deafened: this.deafened, kinds });
   }
 
   private onServer(msg: ServerMsg) {
@@ -238,11 +257,17 @@ export class Mesh {
         break;
       case 'join':
         this.addPeer(msg.id, msg.name, false);
+        this.opts.onPeerEvent('join');
         break;
       case 'leave':
-        this.peers.get(msg.id)?.pc.close();
-        this.peers.delete(msg.id);
-        this.opts.onChange();
+        {
+          const peer = this.peers.get(msg.id);
+          if (!peer) break;
+          peer.pc.close();
+          this.peers.delete(msg.id);
+          this.opts.onPeerEvent('leave');
+          this.opts.onChange();
+        }
         break;
       case 'full':
         this.closed = true;
@@ -261,7 +286,7 @@ export class Mesh {
 
   private addPeer(id: string, name: string, polite: boolean, retry = STUCK_MS) {
     const pc = new RTCPeerConnection({ iceServers: this.opts.iceServers, bundlePolicy: 'max-bundle' });
-    const peer: Peer = { id, name, pc, dc: null, polite, ignoreOffer: false, queue: Promise.resolve(), sending: {}, remoteKinds: {}, micOn: true };
+    const peer: Peer = { id, name, pc, dc: null, polite, ignoreOffer: false, queue: Promise.resolve(), sending: {}, remoteKinds: {}, micOn: true, deafened: false, stateKnown: false };
     this.peers.set(id, peer);
 
     // Canal de dados (estado e chat): só quem já estava na call cria; quem chega recebe pronto.
@@ -316,7 +341,14 @@ export class Mesh {
 
   private onPeerMsg(peer: Peer, msg: PeerMsg) {
     if (msg.type === 'state') {
+      const deafened = !!msg.deafened;
+      // O primeiro estado só diz como a pessoa chegou: não é mudança, não toca som.
+      // Ensurdecer desliga o mic junto, e aí toca só o som de ensurdecer.
+      if (peer.stateKnown && deafened !== peer.deafened) this.opts.onPeerEvent(deafened ? 'deafen' : 'undeafen');
+      else if (peer.stateKnown && msg.micOn !== peer.micOn) this.opts.onPeerEvent(msg.micOn ? 'unmute' : 'mute');
+      peer.stateKnown = true;
       peer.micOn = msg.micOn;
+      peer.deafened = deafened;
       peer.remoteKinds = msg.kinds;
       this.opts.onChange();
     } else if (msg.type === 'chat' && typeof msg.text === 'string') {

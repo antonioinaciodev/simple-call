@@ -156,6 +156,16 @@ export function Settings({ prefs, setPrefs, actions, onClose }: Props) {
         </section>
 
         <section>
+          <h3>Sons</h3>
+          <Toggle
+            label="Sons da call"
+            hint="Quando alguém entra, sai, muta ou desliga o som. E quando você muta."
+            checked={prefs.sounds}
+            onChange={(v) => setPrefs({ sounds: v })}
+          />
+        </section>
+
+        <section>
           <h3>Tema</h3>
           <div className="segmented">
             <button className={prefs.theme === 'dark' ? 'selected' : ''} onClick={() => setPrefs({ theme: 'dark' })}>

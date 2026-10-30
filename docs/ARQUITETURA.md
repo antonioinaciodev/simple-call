@@ -48,9 +48,11 @@ Cada pessoa tem um `RTCPeerConnection` com cada uma das outras (malha completa).
 
 **Uma fila por conexão.** Ofertas e mensagens recebidas de uma pessoa rodam uma de cada vez, na ordem (`enqueue`). Duas operações de negociação ao mesmo tempo na mesma conexão embaralham o estado dela.
 
-**Canal de dados.** Estado (mic ligado, tipo de cada faixa) e chat vão por um `RTCDataChannel`. Só quem já estava na call cria o canal; quem chega recebe pronto pelo `ondatachannel`. Se os dois criassem, a primeira negociação cruzada derrubaria o canal de um dos lados.
+**Canal de dados.** Estado (mic ligado, som da call desligado, tipo de cada faixa) e chat vão por um `RTCDataChannel`. Só quem já estava na call cria o canal; quem chega recebe pronto pelo `ondatachannel`. Se os dois criassem, a primeira negociação cruzada derrubaria o canal de um dos lados.
 
 **Um transceiver por tipo de mídia.** Cada conexão tem até quatro: `mic`, `camera`, `screen` e `screenAudio`. Ligar e desligar troca só a faixa (`replaceTrack`), sem criar transceivers novos. O mic nem renegocia: só fica mudo. Como o outro lado não tem como saber se um vídeo é câmera ou tela, quem envia manda pelo canal de dados o tipo de cada faixa, indexado pelo `mid`.
+
+**Volume de cada pessoa.** Até 100% quem ajusta é o próprio `<audio>`, sem custo extra. Acima disso o áudio passa por um `GainNode` do Web Audio, e o `<audio>` continua tocando mudo: sem ele o Chrome não entrega o áudio da conexão pro Web Audio. Os sons da call (entrar, sair, mutar) são gerados com osciladores nesse mesmo `AudioContext`, sem arquivo pra baixar.
 
 ## Qualidade
 

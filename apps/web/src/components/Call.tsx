@@ -5,6 +5,8 @@ import { getIceServers } from '../lib/api';
 import { Mesh, type ChatMessage } from '../lib/mesh';
 import { audioSettings, cameraConstraints, micConstraints, type Prefs } from '../lib/prefs';
 import { screenPreset } from '../lib/screen';
+import { playSound, setSoundOutput, type SoundKind } from '../lib/sounds';
+import { useVoiceVolumes } from '../lib/volumes';
 import { Chat } from './Chat';
 import { ControlBar } from './ControlBar';
 import { RemoteAudio } from './RemoteAudio';
@@ -24,6 +26,8 @@ export type Panel = 'chat' | 'settings' | null;
 // Ações de mídia usadas pela barra de controles e pelos ajustes.
 export interface MediaActions {
   toggleMic: () => Promise<void>;
+  // Desliga o som da call e o mic juntos; ao voltar, o mic volta como estava.
+  toggleDeafen: () => Promise<void>;
   toggleCam: () => Promise<void>;
   share: () => Promise<void>;
   stopShare: () => void;
@@ -51,6 +55,20 @@ export function Call({ code, prefs, setPrefs, onLeave }: Props) {
   prefsRef.current = prefs;
   const onLeaveRef = useRef(onLeave);
   onLeaveRef.current = onLeave;
+  const volumes = useVoiceVolumes();
+  const meshRef = useRef<Mesh | null>(null);
+  meshRef.current = mesh;
+  // Se o mic estava ligado quando o som da call foi desligado.
+  const micBeforeDeafen = useRef(false);
+
+  // Sons dos outros um pouco mais baixos que os seus; com o som da call desligado, nenhum.
+  const sound = useCallback((kind: SoundKind, mine = false) => {
+    if (!prefsRef.current.sounds) return;
+    if (!mine && meshRef.current?.deafened) return;
+    playSound(kind, mine ? 1 : 0.7);
+  }, []);
+
+  useEffect(() => setSoundOutput(prefs.speakerId), [prefs.speakerId]);
 
   const flash = useCallback((msg: string) => {
     setToast(msg);
@@ -72,6 +90,7 @@ export function Call({ code, prefs, setPrefs, onLeave }: Props) {
           audio: audioSettings(p),
           onChange: rerender,
           onChat: (msg) => setMessages((prev) => [...prev, msg].slice(-MAX_MESSAGES)),
+          onPeerEvent: (e) => sound(e),
           onClose: (reason) => onLeaveRef.current(reason),
         });
         setMesh(m);
@@ -92,7 +111,7 @@ export function Call({ code, prefs, setPrefs, onLeave }: Props) {
       m?.leave();
     };
     // Conecta uma vez por entrada na call.
-  }, [code, flash]);
+  }, [code, flash, sound]);
 
   const actions = useMemo<MediaActions | null>(() => {
     if (!mesh) return null;
@@ -110,7 +129,27 @@ export function Call({ code, prefs, setPrefs, onLeave }: Props) {
         run(async () => {
           const on = !mesh.mic;
           setPrefs({ micOn: on });
-          mesh.setMic(on ? await capture('audio', micConstraints(prefsRef.current)) : null);
+          const track = on ? await capture('audio', micConstraints(prefsRef.current)) : null;
+          // Ligar o mic com o som da call desligado religa o som também, como no Discord.
+          if (on && mesh.deafened) {
+            mesh.setDeafened(false, track);
+            sound('undeafen', true);
+          } else {
+            mesh.setMic(track);
+            sound(on ? 'unmute' : 'mute', true);
+          }
+        }, 'Não deu pra acessar o microfone.'),
+      toggleDeafen: () =>
+        run(async () => {
+          if (!mesh.deafened) {
+            micBeforeDeafen.current = !!mesh.mic;
+            mesh.setDeafened(true, null);
+            sound('deafen', true);
+          } else {
+            const track = micBeforeDeafen.current ? await capture('audio', micConstraints(prefsRef.current)) : null;
+            mesh.setDeafened(false, track);
+            sound('undeafen', true);
+          }
         }, 'Não deu pra acessar o microfone.'),
       toggleCam: () =>
         run(async () => {
@@ -129,7 +168,7 @@ export function Call({ code, prefs, setPrefs, onLeave }: Props) {
           if (recapture === 'camera' && mesh.camera) mesh.setCamera(await capture('video', cameraConstraints(next)));
         }, 'Não deu pra aplicar o ajuste.'),
     };
-  }, [mesh, setPrefs, flash]);
+  }, [mesh, setPrefs, flash, sound]);
 
   const speaking = useSpeaking(mesh);
 
@@ -163,7 +202,14 @@ export function Call({ code, prefs, setPrefs, onLeave }: Props) {
         <span className="code">{code}</span>
       </header>
       <main className="stage-wrap">
-        <Stage mesh={mesh} speaking={speaking} />
+        <Stage
+          mesh={mesh}
+          speaking={speaking}
+          voiceVolume={volumes.get}
+          setVoiceVolume={volumes.set}
+          streamVolume={prefs.streamVolume}
+          setStreamVolume={(v) => setPrefs({ streamVolume: v })}
+        />
         {showStats && <Stats peers={peers} />}
       </main>
       {panel && (
@@ -189,7 +235,15 @@ export function Call({ code, prefs, setPrefs, onLeave }: Props) {
         toast={toast}
       />
       {peers.map((p) => (
-        <RemoteAudio key={p.id} mesh={mesh} peer={p} speakerId={prefs.speakerId} />
+        <RemoteAudio
+          key={p.id}
+          mesh={mesh}
+          peer={p}
+          speakerId={prefs.speakerId}
+          voiceVolume={volumes.get(p.name)}
+          streamVolume={prefs.streamVolume}
+          deafened={mesh.deafened}
+        />
       ))}
     </div>
   );

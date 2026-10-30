@@ -540,9 +540,69 @@ select.input {
   opacity: 1;
 }
 
-/* Telas de toque não têm hover: o botão fica sempre visível. */
+/* Volume de quem você escuta, no canto de cima do quadro. */
+.tile-volume {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: calc(100% - 56px);
+  height: 32px;
+  padding: 0 10px 0 2px;
+  border-radius: 8px;
+  background: var(--overlay);
+  color: var(--text);
+  backdrop-filter: blur(6px);
+  cursor: default;
+  opacity: 0;
+  transition: opacity 150ms;
+}
+
+.tile-volume-btn {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.tile-volume-btn:hover {
+  background: var(--surface-3);
+}
+
+.tile-volume input[type='range'] {
+  min-width: 0;
+  width: 96px;
+  accent-color: var(--strong);
+  cursor: pointer;
+}
+
+.tile-volume-pct {
+  flex: none;
+  min-width: 34px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.tile:hover .tile-volume,
+.tile-volume:focus-within,
+.tile:fullscreen .tile-volume {
+  opacity: 1;
+}
+
+/* Telas de toque não têm hover: os botões ficam sempre visíveis. */
 @media (hover: none) {
-  .tile-action {
+  .tile-action,
+  .tile-volume {
     opacity: 1;
   }
 }
