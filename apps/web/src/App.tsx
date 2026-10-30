@@ -5,6 +5,7 @@ import { loadPrefs, savePrefs, type Prefs } from './lib/prefs';
 
 // A parte de chamada (LiveKit) só é baixada quando alguém abre uma call, deixando a tela inicial leve.
 const RoomPage = lazy(() => import('./components/RoomPage').then((m) => ({ default: m.RoomPage })));
+const P2PPage = lazy(() => import('./p2p/P2PPage').then((m) => ({ default: m.P2PPage })));
 
 export type SetPrefs = (patch: Partial<Prefs>) => void;
 
@@ -35,11 +36,17 @@ export function App() {
     setPath(to);
   }, []);
 
+  // Calls do protótipo P2P ficam em /p2p/abc-defg-hij; as do LiveKit, direto em /abc-defg-hij.
+  const p2p = path.startsWith('/p2p/');
   const code = path === '/' ? null : parseRoomCode(path);
   if (!code) return <Home navigate={navigate} />;
   return (
     <Suspense fallback={<div className="center-page muted">Carregando…</div>}>
-      <RoomPage key={code} code={code} prefs={prefs} setPrefs={setPrefs} navigate={navigate} />
+      {p2p ? (
+        <P2PPage key={code} code={code} prefs={prefs} setPrefs={setPrefs} navigate={navigate} />
+      ) : (
+        <RoomPage key={code} code={code} prefs={prefs} setPrefs={setPrefs} navigate={navigate} />
+      )}
     </Suspense>
   );
 }

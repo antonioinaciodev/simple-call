@@ -829,6 +829,42 @@ select.input {
   font-weight: 500;
 }
 
+/* ---------- protótipo P2P ---------- */
+
+.stage-wrap:has(.p2p-stage) {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.p2p-stage {
+  min-height: 0;
+  display: grid;
+  gap: 8px;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+}
+
+.p2p-empty {
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.p2p-people {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.p2p-person {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  font-size: 12px;
+}
+
 /* ---------- celular ---------- */
 
 @media (max-width: 720px) {
