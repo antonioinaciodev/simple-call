@@ -16,12 +16,15 @@ Chamadas leves pra jogar e transmitir com os amigos. Estilo Meet: você cria a c
 - **Microfone e câmera**, com prévia antes de entrar e escolha de dispositivo (mic, câmera e saída de áudio).
 - **Transmissão de tela** em 1080p 60, 720p 60, 1080p 30 ou 720p 30, com áudio do sistema no Windows.
 - **Chat** dentro da call. As mensagens somem quando a call acaba.
+- **Volume de cada um:** cada amigo tem o próprio volume (de 0 a 200%), que fica salvo pro próximo encontro. A transmissão tem um volume separado das vozes.
+- **Desligar o som da call** (como o ensurdecer do Discord): corta tudo que você ouve e o mic junto. Ao religar, o mic volta como estava.
+- **Sons da call** quando alguém entra, sai, muta ou desliga o som, e quando você muta. Dá pra desligar nos ajustes.
 - **Áudio ajustável:** de 24 a 128 kbps (estéreo nas opções de música), cancelamento de eco, supressão de ruído, ganho automático e DTX.
 - **Codec da transmissão:** H.264, VP9, AV1 ou VP8.
 - **Estatísticas da conexão:** ping, rota (direta ou via TURN), resolução, FPS, bitrate e perda de pacotes.
 - Contorno em quem está falando, tela cheia na transmissão (botão ou dois cliques) e tema escuro ou claro, só em escala de cinza.
 - Funciona no celular. Os ajustes ficam salvos no navegador.
-- Atalhos: `M` microfone, `V` câmera, `S` transmitir tela, `C` chat.
+- Atalhos: `M` microfone, `D` som da call, `V` câmera, `S` transmitir tela, `C` chat.
 
 | | |
 | --- | --- |

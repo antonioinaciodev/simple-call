@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Mesh } from '../lib/mesh';
+import { MAX_VOICE_VOLUME } from '../lib/volumes';
 import { Tile, type TileItem } from './Tile';
 
 // Grade quase quadrada: 1 → 1x1, 2 → 2x1, 3-4 → 2x2, 5-6 → 3x2, 7-9 → 3x3...
@@ -8,7 +9,16 @@ function gridSize(n: number) {
   return { cols, rows: Math.ceil(n / cols) };
 }
 
-export function Stage({ mesh, speaking }: { mesh: Mesh; speaking: ReadonlySet<string> }) {
+interface Props {
+  mesh: Mesh;
+  speaking: ReadonlySet<string>;
+  voiceVolume: (name: string) => number;
+  setVoiceVolume: (name: string, v: number) => void;
+  streamVolume: number;
+  setStreamVolume: (v: number) => void;
+}
+
+export function Stage({ mesh, speaking, voiceVolume, setVoiceVolume, streamVolume, setStreamVolume }: Props) {
   const [pinned, setPinned] = useState<string | null>(null);
 
   const cameras: TileItem[] = [
@@ -19,6 +29,7 @@ export function Stage({ mesh, speaking }: { mesh: Mesh; speaking: ReadonlySet<st
       isScreen: false,
       track: mesh.camera ?? undefined,
       micOff: !mesh.mic,
+      deafened: mesh.deafened,
       speaking: speaking.has('local'),
       badSignal: false,
     },
@@ -26,15 +37,38 @@ export function Stage({ mesh, speaking }: { mesh: Mesh; speaking: ReadonlySet<st
   const screens: TileItem[] = [];
   const localScreen = mesh.screen?.getVideoTracks()[0];
   if (localScreen) {
-    screens.push({ key: 'local:screen', name: mesh.name, isLocal: true, isScreen: true, track: localScreen, micOff: false, speaking: false, badSignal: false });
+    screens.push({ key: 'local:screen', name: mesh.name, isLocal: true, isScreen: true, track: localScreen, micOff: false, deafened: false, speaking: false, badSignal: false });
   }
 
   for (const p of mesh.peers.values()) {
     const media = mesh.remoteMedia(p);
     const badSignal = p.pc.connectionState === 'disconnected' || p.pc.connectionState === 'failed';
-    cameras.push({ key: `${p.id}:camera`, name: p.name, isLocal: false, isScreen: false, track: media.camera, micOff: !p.micOn, speaking: speaking.has(p.id), badSignal });
+    cameras.push({
+      key: `${p.id}:camera`,
+      name: p.name,
+      isLocal: false,
+      isScreen: false,
+      track: media.camera,
+      micOff: !p.micOn,
+      deafened: p.deafened,
+      speaking: speaking.has(p.id),
+      badSignal,
+      volume: { value: voiceVolume(p.name), max: MAX_VOICE_VOLUME, onChange: (v) => setVoiceVolume(p.name, v) },
+    });
     if (media.screen) {
-      screens.push({ key: `${p.id}:screen`, name: p.name, isLocal: false, isScreen: true, track: media.screen, micOff: false, speaking: false, badSignal });
+      screens.push({
+        key: `${p.id}:screen`,
+        name: p.name,
+        isLocal: false,
+        isScreen: true,
+        track: media.screen,
+        micOff: false,
+        deafened: false,
+        speaking: false,
+        badSignal,
+        // Transmissão sem áudio (só a janela, ou áudio desligado) não tem o que ajustar.
+        volume: media.screenAudio ? { value: streamVolume, max: 1, onChange: setStreamVolume } : undefined,
+      });
     }
   }
 

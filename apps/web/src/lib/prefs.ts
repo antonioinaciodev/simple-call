@@ -15,6 +15,9 @@ export interface Prefs {
   shareAudio: boolean;
   videoCodec: VideoCodec;
   theme: 'dark' | 'light';
+  // Sons de entrar, sair e mutar; volume do áudio das transmissões (0 a 1).
+  sounds: boolean;
+  streamVolume: number;
   // Dispositivos escolhidos nos ajustes; vazio = padrão do sistema.
   micId: string;
   camId: string;
@@ -34,6 +37,8 @@ export const DEFAULT_PREFS: Prefs = {
   shareAudio: true,
   videoCodec: 'h264',
   theme: 'dark',
+  sounds: true,
+  streamVolume: 1,
   micId: '',
   camId: '',
   speakerId: '',

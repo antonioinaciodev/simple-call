@@ -1,4 +1,4 @@
-import { Maximize, MicOff, Minimize, MonitorUp, WifiOff } from 'lucide-react';
+import { HeadphoneOff, Maximize, MicOff, Minimize, MonitorUp, Volume1, Volume2, VolumeX, WifiOff } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 
 export interface TileItem {
@@ -8,8 +8,11 @@ export interface TileItem {
   isScreen: boolean;
   track?: MediaStreamTrack;
   micOff: boolean;
+  deafened: boolean;
   speaking: boolean;
   badSignal: boolean;
+  // Volume de quem eu escuto (1 = 100%); ausente no meu próprio quadro.
+  volume?: { value: number; max: number; onChange: (v: number) => void };
 }
 
 interface Props {
@@ -72,10 +75,15 @@ export function Tile({ item, fit, onClick }: Props) {
         <div className="avatar">{name.charAt(0).toUpperCase()}</div>
       )}
       <div className="tile-label">
-        {!isScreen && item.micOff && <MicOff size={13} aria-label="Microfone desligado" />}
+        {item.deafened ? (
+          <HeadphoneOff size={13} aria-label="Som da call desligado" />
+        ) : (
+          !isScreen && item.micOff && <MicOff size={13} aria-label="Microfone desligado" />
+        )}
         {item.badSignal && <WifiOff size={13} aria-label="Conexão ruim" />}
         <span>{label}</span>
       </div>
+      {item.volume && <VolumeControl {...item.volume} label={isScreen ? 'Volume da transmissão' : `Volume de ${name}`} />}
       {canFullscreen && (
         <button
           className="tile-action"
@@ -89,6 +97,39 @@ export function Tile({ item, fit, onClick }: Props) {
           {fullscreen.active ? <Minimize size={16} /> : <Maximize size={16} />}
         </button>
       )}
+    </div>
+  );
+}
+
+// Volume na hora, no canto do quadro: clicar no ícone muta e desmuta só pra você.
+function VolumeControl({ value, max, onChange, label }: { value: number; max: number; onChange: (v: number) => void; label: string }) {
+  const [before, setBefore] = useState(1);
+  const Icon = value === 0 ? VolumeX : value < 0.5 ? Volume1 : Volume2;
+  const pct = Math.round(value * 100);
+  return (
+    // Clique e dois cliques aqui não fixam o quadro nem abrem a tela cheia.
+    <div className="tile-volume" onClick={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
+      <button
+        className="tile-volume-btn"
+        onClick={() => {
+          if (value > 0) setBefore(value);
+          onChange(value > 0 ? 0 : before || 1);
+        }}
+        title={value > 0 ? 'Mutar só pra você' : 'Desmutar'}
+      >
+        <Icon size={15} />
+      </button>
+      <input
+        type="range"
+        min={0}
+        max={max * 100}
+        step={5}
+        value={pct}
+        onChange={(e) => onChange(Number(e.target.value) / 100)}
+        aria-label={label}
+        title={label}
+      />
+      <span className="tile-volume-pct">{pct}%</span>
     </div>
   );
 }

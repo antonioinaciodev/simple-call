@@ -1,5 +1,7 @@
 import {
   Activity,
+  HeadphoneOff,
+  Headphones,
   MessageSquare,
   Mic,
   MicOff,
@@ -37,19 +39,21 @@ const isTyping = (el: EventTarget | null) =>
 
 export function ControlBar({ mesh, actions, prefs, setPrefs, panel, setPanel, unread, showStats, toggleStats, onLeave, toast }: Props) {
   const [shareOpen, setShareOpen] = useState(false);
-  const { toggleMic, toggleCam, share, stopShare } = actions;
+  const { toggleMic, toggleDeafen, toggleCam, share, stopShare } = actions;
   const isMicrophoneEnabled = !!mesh.mic;
+  const isDeafened = mesh.deafened;
   const isCameraEnabled = !!mesh.camera;
   const isScreenShareEnabled = !!mesh.screen;
 
   const togglePanel = (p: Exclude<Panel, null>) => setPanel(panel === p ? null : p);
 
-  // Atalhos: M mic, V câmera, S tela, C chat. Ignorados enquanto digita.
+  // Atalhos: M mic, D som da call, V câmera, S tela, C chat. Ignorados enquanto digita.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (isTyping(e.target) || e.ctrlKey || e.metaKey || e.altKey) return;
       const k = e.key.toLowerCase();
       if (k === 'm') toggleMic();
+      else if (k === 'd') toggleDeafen();
       else if (k === 'v') toggleCam();
       else if (k === 's') isScreenShareEnabled ? stopShare() : setShareOpen((o) => !o);
       else if (k === 'c') togglePanel('chat');
@@ -73,6 +77,14 @@ export function ControlBar({ mesh, actions, prefs, setPrefs, panel, setPanel, un
           aria-pressed={isMicrophoneEnabled}
         >
           {isMicrophoneEnabled ? <Mic size={20} /> : <MicOff size={20} />}
+        </button>
+        <button
+          className={`icon-btn ${isDeafened ? 'off' : 'on'}`}
+          onClick={toggleDeafen}
+          title={`${isDeafened ? 'Ligar' : 'Desligar'} o som da call (D)`}
+          aria-pressed={isDeafened}
+        >
+          {isDeafened ? <HeadphoneOff size={20} /> : <Headphones size={20} />}
         </button>
         <button
           className={`icon-btn ${isCameraEnabled ? 'on' : 'off'}`}
