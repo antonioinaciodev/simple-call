@@ -200,6 +200,7 @@ export function Call({ code, prefs, setPrefs, onLeave }: Props) {
     <div className={`call ${panel ? 'with-panel' : ''}`}>
       <header className="call-top">
         <span className="code">{code}</span>
+        {mesh.serverDown && <span className="server-down">· reconectando ao servidor…</span>}
       </header>
       <main className="stage-wrap">
         <Stage

@@ -31,20 +31,31 @@ O Durable Object fala com cada navegador por WebSocket:
 
 | Mensagem | Direção | Quando |
 | --- | --- | --- |
-| `welcome` | servidor → quem entrou | Logo ao conectar, com o id da pessoa e a lista de quem já está na call |
+| `welcome` | servidor → quem entrou | Logo ao conectar, com o id da pessoa, um token pra voltar com o mesmo id e a lista de quem já está na call |
 | `join` / `leave` | servidor → todos | Alguém entrou ou saiu |
 | `full` | servidor → quem entrou | A call já tem 6 pessoas |
 | `signal` | navegador ↔ navegador | Oferta, resposta e candidatos ICE, repassados pelo servidor pro `to` indicado |
 
-Ele usa a hibernação de WebSockets: entre uma mensagem e outra o objeto sai da memória e a Cloudflare segura as conexões, então uma call parada não gasta nada. O navegador manda um ping a cada 30 s pra conexão não cair por inatividade, e a resposta automática (`setWebSocketAutoResponse`) não acorda o objeto.
+Ele usa a hibernação de WebSockets: entre uma mensagem e outra o objeto sai da memória e a Cloudflare segura as conexões, então uma call parada não gasta nada. O navegador manda um ping a cada 10 s pra conexão não cair por inatividade, e a resposta automática (`setWebSocketAutoResponse`) não acorda o objeto.
 
 Depois que todo mundo se conectou, a call segue direto entre as pessoas mesmo se o servidor cair; só não dá pra entrar gente nova.
+
+**Quando a conexão com o servidor cai.** No celular ela cai à toa (a internet pisca, troca de Wi-Fi pro 4G). Por isso:
+
+- O navegador reconecta sozinho, com espera de 1 a 8 s entre tentativas (ou na hora, quando o navegador avisa que a internet voltou). Se passar 25 s sem nenhuma resposta do servidor, nem o pong do ping, a conexão morreu sem avisar e ele abre outra.
+- Ao reconectar, manda o id e o token que recebeu no `welcome`. O servidor devolve o mesmo id e ninguém fica sabendo de nada: a pessoa continua na call. Se a conexão antiga ainda parecia aberta pro servidor, ele fecha ela.
+- Quem cai sem sair (qualquer fechamento que não seja o 1000 do botão Sair ou o 1001 de fechar a aba) fica 15 s guardado no armazenamento do objeto, ainda na lista da call. Só quando esse tempo acaba (um alarme do Durable Object) os outros recebem o `leave`.
+- Voltando depois disso, o servidor dá um id novo e a pessoa entra de novo como se tivesse acabado de chegar.
+
+Ao voltar a tempo, o navegador confere a lista do `welcome` com quem ele conhecia: quem não está mais saiu, quem é novo entrou enquanto ele estava fora (e espera a oferta dele, como com qualquer novato).
 
 ## A malha P2P (`mesh.ts`)
 
 Cada pessoa tem um `RTCPeerConnection` com cada uma das outras (malha completa). Com 4 pessoas são 3 conexões por navegador.
 
 **Negociação.** Segue o padrão "perfect negotiation" do WebRTC: quando os dois lados mandam oferta ao mesmo tempo, o lado "educado" (*polite*) cede e o outro ignora a oferta que cruzou. Quem chega na call é o educado com quem já estava, então as conexões ficam simétricas e sem impasse.
+
+**Reconexão do áudio e vídeo.** Com sinal ruim (`disconnected` ou `failed`) por 3 s, o lado não educado reinicia o ICE (`restartIce`), que procura caminhos de novo sem derrubar faixas nem o canal de dados. Se não voltar, tenta de novo com esperas dobrando até 30 s. Só ele reinicia, pra que as duas pontas não mandem ofertas cruzadas; o educado manda um `{ restart: true }` pedindo, caso o outro não tenha percebido. Se uma oferta de reinício se perdeu (servidor fora), a próxima tentativa desfaz ela (`rollback`) e manda outra. Enquanto isso o quadro da pessoa mostra "reconectando…".
 
 **Uma fila por conexão.** Ofertas e mensagens recebidas de uma pessoa rodam uma de cada vez, na ordem (`enqueue`). Duas operações de negociação ao mesmo tempo na mesma conexão embaralham o estado dela.
 

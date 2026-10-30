@@ -35,6 +35,12 @@ export interface Peer {
   micOn: boolean;
   deafened: boolean;
   stateKnown: boolean;
+  // Já chegou a conectar alguma vez (pra saber se "conectando" é reconexão) e a próxima espera
+  // pra tentar reconectar o ICE, que dobra a cada tentativa sem sucesso.
+  wasConnected: boolean;
+  restartDelay: number;
+  restartTimer?: ReturnType<typeof setTimeout>;
+  lastRestart: number;
 }
 
 // Mudanças nas outras pessoas que viram som na call.
@@ -65,14 +71,15 @@ interface Options {
 }
 
 type ServerMsg =
-  | { type: 'welcome'; id: string; peers: { id: string; name: string }[] }
+  | { type: 'welcome'; id: string; token: string; peers: { id: string; name: string }[] }
   | { type: 'join'; id: string; name: string }
   | { type: 'leave'; id: string }
   | { type: 'full' }
   | { type: 'signal'; from: string; data: SignalData };
 
 // reset: a conexão comigo travou e recomecei do zero; feche a sua e espere minha nova oferta.
-type SignalData = { description: RTCSessionDescriptionInit } | { candidate: RTCIceCandidateInit } | { reset: true };
+// restart: a conexão comigo caiu; quem cuida de reconectar (o lado não educado) tenta agora.
+type SignalData = { description: RTCSessionDescriptionInit } | { candidate: RTCIceCandidateInit } | { reset: true } | { restart: true };
 
 type PeerMsg =
   | { type: 'state'; micOn: boolean; deafened?: boolean; kinds: Record<string, MediaKind> }
@@ -82,6 +89,16 @@ const CAMERA_ENCODING: RTCRtpEncodingParameters = { maxBitrate: 1_200_000, maxFr
 const SCREEN_AUDIO_BITRATE = 128_000;
 // Uma conexão normal fecha em menos de 1 s (uns 3 s pelo TURN).
 const STUCK_MS = 10_000;
+// Sinal ruim por esse tempo e a conexão tenta outro caminho (reinício do ICE), sem esperar o
+// navegador declarar que falhou, o que leva de 15 a 30 s. A espera dobra até o máximo.
+const RESTART_MS = 3_000;
+const RESTART_MAX_MS = 30_000;
+// Ping no servidor de tempos em tempos; sem resposta nenhuma por DEAD_MS, a conexão morreu sem
+// avisar (o celular trocou de rede) e abrimos outra. Reconectar espera de 1 a 8 s entre tentativas.
+const PING_MS = 10_000;
+const DEAD_MS = 25_000;
+const RETRY_MS = 1_000;
+const RETRY_MAX_MS = 8_000;
 
 export class Mesh {
   readonly peers = new Map<string, Peer>();
@@ -91,24 +108,73 @@ export class Mesh {
   screenPreset: ScreenPreset | null = null;
   // Som da call desligado (e o mic junto), como o "ensurdecer" do Discord.
   deafened = false;
-  private ws: WebSocket;
+  // Sem conexão com o servidor agora, tentando voltar. A call continua direto entre as pessoas,
+  // mas sem servidor não dá pra reconectar com ninguém nem entrar gente nova.
+  serverDown = false;
+  private ws!: WebSocket;
+  // Meu id na call e o segredo pra voltar com ele se a conexão com o servidor cair.
+  private self: { id: string; token: string } | null = null;
   private closed = false;
   private joined = false;
+  private lastSeen = 0;
+  private retryDelay = RETRY_MS;
+  private retry?: ReturnType<typeof setTimeout>;
   private ping: ReturnType<typeof setInterval>;
 
   constructor(private opts: Options) {
+    this.connect();
+    // Mantém a sinalização viva (conexões paradas são derrubadas por inatividade no caminho)
+    // e percebe quando ela morreu sem fechar.
+    this.ping = setInterval(() => {
+      if (this.ws.readyState !== WebSocket.OPEN) return;
+      if (Date.now() - this.lastSeen > DEAD_MS) this.reconnect();
+      else this.ws.send('{"type":"ping"}');
+    }, PING_MS);
+    window.addEventListener('online', this.onOnline);
+  }
+
+  private connect() {
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-    const qs = new URLSearchParams({ room: opts.room, name: opts.name });
-    this.ws = new WebSocket(`${proto}://${location.host}/api/signal?${qs}`);
-    this.ws.onmessage = (e) => this.onServer(JSON.parse(e.data) as ServerMsg);
-    // Mantém a sinalização viva: conexões paradas são derrubadas por inatividade no caminho.
-    this.ping = setInterval(() => this.ws.readyState === WebSocket.OPEN && this.ws.send('{"type":"ping"}'), 30_000);
-    this.ws.onclose = (e) => {
-      // Sem ter entrado ainda, não tem call pra continuar. Depois de entrar, a call segue direto
-      // entre as pessoas mesmo se o servidor cair; só não dá pra entrar gente nova.
-      if (!this.closed && !this.joined) this.opts.onClose(e.code === 1006 ? 'Não deu pra conectar ao servidor.' : 'A conexão com o servidor caiu.');
+    const qs = new URLSearchParams({ room: this.opts.room, name: this.opts.name });
+    if (this.self) {
+      qs.set('id', this.self.id);
+      qs.set('token', this.self.token);
+    }
+    const ws = new WebSocket(`${proto}://${location.host}/api/signal?${qs}`);
+    this.ws = ws;
+    this.lastSeen = Date.now();
+    ws.onmessage = (e) => {
+      this.lastSeen = Date.now();
+      this.onServer(JSON.parse(e.data) as ServerMsg);
+    };
+    ws.onclose = (e) => {
+      if (ws !== this.ws || this.closed) return;
+      // Sem ter entrado ainda, não tem call pra continuar.
+      if (!this.joined) return this.opts.onClose(e.code === 1006 ? 'Não deu pra conectar ao servidor.' : 'A conexão com o servidor caiu.');
+      this.serverDown = true;
+      this.opts.onChange();
+      this.retry = setTimeout(() => this.connect(), this.retryDelay);
+      this.retryDelay = Math.min(this.retryDelay * 2, RETRY_MAX_MS);
     };
   }
+
+  // Abandona a conexão atual (que pode estar morta sem saber) e abre outra na hora.
+  private reconnect() {
+    const ws = this.ws;
+    ws.onclose = ws.onmessage = null;
+    // Código de queda (não 1000): se ela ainda chegar no servidor, ele me espera voltar.
+    ws.close(4000);
+    clearTimeout(this.retry);
+    this.serverDown = true;
+    this.opts.onChange();
+    this.connect();
+  }
+
+  // A internet voltou (ou trocou de rede): não espera a próxima tentativa nem o próximo ping.
+  private onOnline = () => {
+    if (this.closed || !this.joined) return;
+    this.reconnect();
+  };
 
   get name() {
     return this.opts.name;
@@ -117,7 +183,10 @@ export class Mesh {
   leave() {
     this.closed = true;
     clearInterval(this.ping);
-    this.ws.close();
+    clearTimeout(this.retry);
+    window.removeEventListener('online', this.onOnline);
+    // 1000: saí de propósito, o servidor avisa todo mundo na hora em vez de esperar eu voltar.
+    this.ws.close(1000);
     for (const p of this.peers.values()) p.pc.close();
     this.peers.clear();
     for (const t of [this.mic, this.camera, ...(this.screen?.getTracks() ?? [])]) t?.stop();
@@ -251,9 +320,7 @@ export class Mesh {
   private onServer(msg: ServerMsg) {
     switch (msg.type) {
       case 'welcome':
-        this.joined = true;
-        // Quem chega é o "educado" com quem já estava: as conexões ficam simétricas e sem impasse.
-        for (const p of msg.peers) this.addPeer(p.id, p.name, true);
+        this.onWelcome(msg);
         break;
       case 'join':
         this.addPeer(msg.id, msg.name, false);
@@ -278,15 +345,58 @@ export class Mesh {
           const peer = this.peers.get(msg.from);
           // Recomeçar não entra na fila: o que chegar depois já é da conexão nova.
           if (peer && 'reset' in msg.data) this.recreate(peer, STUCK_MS);
+          else if (peer && 'restart' in msg.data) this.restart(peer);
           else if (peer) this.enqueue(peer, () => this.onSignal(peer, msg.data));
         }
         break;
     }
   }
 
+  private onWelcome(msg: Extract<ServerMsg, { type: 'welcome' }>) {
+    const back = this.self?.id === msg.id;
+    this.self = { id: msg.id, token: msg.token };
+    this.serverDown = false;
+    this.retryDelay = RETRY_MS;
+    if (this.joined && back) return this.onBack(msg.peers);
+    // Primeira entrada, ou voltei depois do tempo de espera e pra todo mundo eu já tinha saído:
+    // começo do zero como quem acabou de chegar.
+    for (const p of this.peers.values()) p.pc.close();
+    this.peers.clear();
+    this.joined = true;
+    // Quem chega é o "educado" com quem já estava: as conexões ficam simétricas e sem impasse.
+    for (const p of msg.peers) this.addPeer(p.id, p.name, true);
+    this.opts.onChange();
+  }
+
+  // Voltei pro servidor a tempo e continuo na call com o mesmo id. O que aconteceu enquanto eu
+  // estava fora se perdeu, então confiro a lista de quem está na call.
+  private onBack(list: { id: string; name: string }[]) {
+    const ids = new Set(list.map((p) => p.id));
+    for (const peer of [...this.peers.values()]) {
+      if (ids.has(peer.id)) continue;
+      peer.pc.close();
+      this.peers.delete(peer.id);
+      this.opts.onPeerEvent('leave');
+    }
+    // Quem entrou nesse meio tempo me viu na lista e espera minha oferta, como com qualquer novato.
+    for (const p of list) {
+      if (this.peers.has(p.id)) continue;
+      this.addPeer(p.id, p.name, false);
+      this.opts.onPeerEvent('join');
+    }
+    // As conexões que caíram junto tentam voltar agora, que já dá pra trocar mensagens de novo.
+    for (const peer of this.peers.values()) {
+      if (peer.pc.connectionState !== 'connected' && peer.wasConnected) {
+        if (peer.polite) this.sendServer(peer.id, { restart: true });
+        else this.restart(peer);
+      }
+    }
+    this.opts.onChange();
+  }
+
   private addPeer(id: string, name: string, polite: boolean, retry = STUCK_MS) {
     const pc = new RTCPeerConnection({ iceServers: this.opts.iceServers, bundlePolicy: 'max-bundle' });
-    const peer: Peer = { id, name, pc, dc: null, polite, ignoreOffer: false, queue: Promise.resolve(), sending: {}, remoteKinds: {}, micOn: true, deafened: false, stateKnown: false };
+    const peer: Peer = { id, name, pc, dc: null, polite, ignoreOffer: false, queue: Promise.resolve(), sending: {}, remoteKinds: {}, micOn: true, deafened: false, stateKnown: false, wasConnected: false, restartDelay: RESTART_MS, lastRestart: 0 };
     this.peers.set(id, peer);
 
     // Canal de dados (estado e chat): só quem já estava na call cria; quem chega recebe pronto.
@@ -314,7 +424,14 @@ export class Mesh {
       if (pc.signalingState === 'stable') this.sendState(peer);
     };
     pc.onconnectionstatechange = () => {
-      if (pc.connectionState === 'failed') pc.restartIce();
+      const state = pc.connectionState;
+      if (state === 'connected') {
+        peer.wasConnected = true;
+        peer.restartDelay = RESTART_MS;
+        clearTimeout(peer.restartTimer);
+      } else if ((state === 'disconnected' || state === 'failed') && !peer.restartTimer) {
+        this.watchSignal(peer);
+      }
       this.opts.onChange();
     };
     if (!polite) this.watch(peer, retry);
@@ -332,6 +449,40 @@ export class Mesh {
       this.sendServer(peer.id, { reset: true });
       this.recreate(peer, delay * 2);
     }, delay);
+  }
+
+  // Sinal ruim: espera um pouco (muitas vezes volta sozinho) e, se não voltou, tenta reconectar.
+  // Só o lado não educado reinicia, pra que as duas pontas não mandem ofertas cruzadas; o educado
+  // pede pra ele, caso ele não tenha percebido. Continua tentando, com esperas cada vez maiores.
+  private watchSignal(peer: Peer) {
+    peer.restartTimer = setTimeout(() => {
+      peer.restartTimer = undefined;
+      const state = peer.pc.connectionState;
+      if (this.peers.get(peer.id) !== peer || state === 'connected' || state === 'closed') return;
+      if (peer.polite) this.sendServer(peer.id, { restart: true });
+      else this.restart(peer);
+      peer.restartDelay = Math.min(peer.restartDelay * 2, RESTART_MAX_MS);
+      this.watchSignal(peer);
+    }, peer.restartDelay);
+  }
+
+  // Reinício do ICE: procura caminhos de novo sem derrubar nada (faixas e canal de dados ficam).
+  private restart(peer: Peer) {
+    if (peer.polite || Date.now() - peer.lastRestart < RESTART_MS) return;
+    peer.lastRestart = Date.now();
+    this.enqueue(peer, async () => {
+      const { pc } = peer;
+      if (pc.connectionState === 'connected' || pc.connectionState === 'closed') return;
+      // A oferta anterior (ou a resposta dela) se perdeu com o servidor fora: desfaz e manda outra.
+      if (pc.signalingState === 'have-local-offer') await pc.setLocalDescription({ type: 'rollback' });
+      pc.restartIce();
+    });
+  }
+
+  // A conexão com essa pessoa está caída ou tentando voltar.
+  reconnecting(peer: Peer) {
+    const state = peer.pc.connectionState;
+    return state === 'disconnected' || state === 'failed' || (peer.wasConnected && (state === 'connecting' || state === 'new'));
   }
 
   private recreate(peer: Peer, retry: number) {

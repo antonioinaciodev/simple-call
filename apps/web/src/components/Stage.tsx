@@ -42,7 +42,7 @@ export function Stage({ mesh, speaking, voiceVolume, setVoiceVolume, streamVolum
 
   for (const p of mesh.peers.values()) {
     const media = mesh.remoteMedia(p);
-    const badSignal = p.pc.connectionState === 'disconnected' || p.pc.connectionState === 'failed';
+    const badSignal = mesh.reconnecting(p);
     cameras.push({
       key: `${p.id}:camera`,
       name: p.name,
