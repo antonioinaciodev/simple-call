@@ -1,10 +1,12 @@
 import { existsSync } from 'node:fs';
+import type { Server } from 'node:http';
 import { resolve } from 'node:path';
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono } from 'hono';
 import { AccessToken } from 'livekit-server-sdk';
 import { cleanName, isRoomCode, newRoomCode } from './rooms.js';
+import { attachSignaling } from './signal.js';
 
 // Carrega o .env da raiz do repositório, se existir (vale pra src/ e dist/).
 try {
@@ -47,6 +49,29 @@ app.post('/api/token', async (c) => {
   return c.json({ token: await at.toJwt(), url: LIVEKIT_URL, identity });
 });
 
+// Servidores ICE do modo P2P. STUN descobre o endereço público de cada um; o TURN (opcional,
+// da Cloudflare) repassa a mídia quando a conexão direta não rola, comum no 4G e em CGNAT.
+const STUN = { urls: ['stun:stun.cloudflare.com:3478', 'stun:stun.l.google.com:19302'] };
+const TURN_KEY_ID = process.env.CF_TURN_KEY_ID;
+const TURN_API_TOKEN = process.env.CF_TURN_API_TOKEN;
+
+app.get('/api/ice', async (c) => {
+  if (!TURN_KEY_ID || !TURN_API_TOKEN) return c.json({ iceServers: [STUN] });
+  try {
+    const res = await fetch(`https://rtc.live.cloudflare.com/v1/turn/keys/${TURN_KEY_ID}/credentials/generate-ice-servers`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${TURN_API_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ttl: 6 * 3600 }),
+    });
+    if (!res.ok) throw new Error(`TURN ${res.status}`);
+    const { iceServers } = (await res.json()) as { iceServers: unknown[] };
+    return c.json({ iceServers: [STUN, ...iceServers] });
+  } catch (err) {
+    console.error('Não deu pra gerar credenciais do TURN:', err);
+    return c.json({ iceServers: [STUN] });
+  }
+});
+
 // Em produção o mesmo processo serve o front já buildado (apps/web/dist).
 const webDist = resolve(import.meta.dirname, '../../web/dist');
 if (existsSync(webDist)) {
@@ -55,6 +80,7 @@ if (existsSync(webDist)) {
   app.get('*', serveStatic({ root: webDist, path: 'index.html' }));
 }
 
-serve({ fetch: app.fetch, port: PORT }, (info) => {
+const server = serve({ fetch: app.fetch, port: PORT }, (info) => {
   console.log(`API ouvindo em http://localhost:${info.port} (LiveKit: ${LIVEKIT_URL})`);
 });
+attachSignaling(server as Server);
