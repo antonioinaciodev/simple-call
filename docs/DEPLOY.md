@@ -10,7 +10,7 @@ O Simple Call é P2P: áudio e vídeo vão direto entre os navegadores. O servid
 
 Nada "dorme": o primeiro acesso é instantâneo. Os servidores da Cloudflare mais perto de cada pessoa atendem (tem vários no Brasil).
 
-A versão no ar hoje: https://simple-call.antonioinaciodev.workers.dev
+A versão no ar hoje: https://simplecall.antonioinaciodev.workers.dev
 
 ## 1. Conta e deploy automático
 
@@ -21,13 +21,13 @@ A versão no ar hoje: https://simple-call.antonioinaciodev.workers.dev
 
    | Campo | Valor |
    | --- | --- |
-   | Project name | `simple-call` (tem que ser igual ao `name` do `wrangler.jsonc`) |
+   | Project name | `simplecall` (tem que ser igual ao `name` do `wrangler.jsonc`) |
    | Build command | `npx pnpm@10 install --frozen-lockfile && npx pnpm@10 build` |
    | Deploy command | `npx pnpm@10 run deploy` |
    | Root directory | deixe vazio (raiz do repositório) |
 
-5. **Deploy**. Em uns 2 minutos o app fica em `https://simple-call.SEU-SUBDOMINIO.workers.dev`. Na primeira vez a Cloudflare pede pra escolher esse subdomínio.
-6. Se o endereço não abrir, vá no Worker `simple-call` → **Settings → Domains & Routes** e ative o **workers.dev**.
+5. **Deploy**. Em uns 2 minutos o app fica em `https://simplecall.SEU-SUBDOMINIO.workers.dev`. Na primeira vez a Cloudflare pede pra escolher esse subdomínio.
+6. Se o endereço não abrir, vá no Worker `simplecall` → **Settings → Domains & Routes** e ative o **workers.dev**.
 
 Cada merge no `main` publica a versão nova sozinho.
 
@@ -45,7 +45,7 @@ Tem **1.000 GB grátis por mês**, mas a Cloudflare pede um cartão de crédito 
 
 1. No painel, abra **Realtime → TURN Server** e crie uma chave.
 2. Anote o **Turn Token ID** e o **API Token**.
-3. Abra o Worker `simple-call` → **Settings → Variables and Secrets** e adicione dois **Secrets**:
+3. Abra o Worker `simplecall` → **Settings → Variables and Secrets** e adicione dois **Secrets**:
    - `CF_TURN_KEY_ID` = o Turn Token ID
    - `CF_TURN_API_TOKEN` = o API Token
 4. Salve. A próxima call já usa o TURN quando precisar.
