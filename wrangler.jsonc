@@ -1,7 +1,7 @@
 // Configuração do Cloudflare Workers: o mesmo Worker serve o site (apps/web/dist)
 // e a API (/api/*), e cada call vira um Durable Object que faz a sinalização.
 {
-  "name": "simple-call",
+  "name": "simplecall",
   "main": "apps/worker/src/index.ts",
   "compatibility_date": "2026-10-01",
   "assets": {
