@@ -1,14 +1,16 @@
 # Colocando no ar
 
-O Simple Call é P2P: áudio e vídeo vão direto entre os navegadores. O servidor só apresenta as pessoas da call, então tudo cabe no plano grátis da **Cloudflare**, sem cartão:
+O Simple Call é P2P: áudio e vídeo vão direto entre os navegadores. O servidor só apresenta as pessoas da call, então tudo cabe no plano grátis da **Cloudflare**, que não pede cartão:
 
 | Peça | Onde roda |
 | --- | --- |
 | Site (`apps/web`) | Arquivos estáticos do Worker |
 | API e sinalização (`apps/worker`) | Cloudflare Workers + um Durable Object por call |
-| TURN (opcional) | Cloudflare Realtime |
+| TURN (opcional, desligado hoje) | Cloudflare Realtime (pede cartão) ou Metered |
 
 Nada "dorme": o primeiro acesso é instantâneo. Os servidores da Cloudflare mais perto de cada pessoa atendem (tem vários no Brasil).
+
+A versão no ar hoje: https://simple-call.antonioinaciodev.workers.dev
 
 ## 1. Conta e deploy automático
 
@@ -25,16 +27,21 @@ Nada "dorme": o primeiro acesso é instantâneo. Os servidores da Cloudflare mai
    | Root directory | deixe vazio (raiz do repositório) |
 
 5. **Deploy**. Em uns 2 minutos o app fica em `https://simple-call.SEU-SUBDOMINIO.workers.dev`. Na primeira vez a Cloudflare pede pra escolher esse subdomínio.
+6. Se o endereço não abrir, vá no Worker `simple-call` → **Settings → Domains & Routes** e ative o **workers.dev**.
 
 Cada merge no `main` publica a versão nova sozinho.
 
 Os nomes dos menus da Cloudflare mudam de vez em quando; se algo não bater, procure por "Workers" e "Import a repository".
 
-## 2. TURN (opcional, pra quem não conecta direto)
+## 2. TURN (opcional)
 
-Na maioria das redes os navegadores se conectam direto. Em algumas (4G, CGNAT de operadora, rede de empresa ou faculdade) isso falha, e a pessoa entra na call mas ninguém se ouve. O TURN resolve repassando a mídia só pra essas conexões. No painel de estatísticas aparece **via TURN** quando ele está em uso.
+Na maioria das redes os navegadores se conectam direto, inclusive no 4G (testado). Em algumas (CGNAT de operadora, rede de empresa ou faculdade) isso falha: a pessoa entra na call mas ninguém se ouve. O TURN resolve repassando a mídia só pra essas conexões. No painel de estatísticas aparece **via TURN** quando ele está em uso.
 
-O TURN da Cloudflare tem **1.000 GB grátis por mês**:
+Hoje o app roda **sem TURN**, só com STUN (grátis, da Cloudflare e do Google), e isso tem bastado. Se alguém não conseguir conectar, há dois caminhos:
+
+### Opção A: TURN da Cloudflare (pede cartão)
+
+Tem **1.000 GB grátis por mês**, mas a Cloudflare pede um cartão de crédito pra ativar o Realtime, mesmo sem cobrar nada dentro do limite. O app já sabe usar:
 
 1. No painel, abra **Realtime → TURN Server** e crie uma chave.
 2. Anote o **Turn Token ID** e o **API Token**.
@@ -43,7 +50,9 @@ O TURN da Cloudflare tem **1.000 GB grátis por mês**:
    - `CF_TURN_API_TOKEN` = o API Token
 4. Salve. A próxima call já usa o TURN quando precisar.
 
-Sem essas variáveis o app usa só STUN (grátis, da Cloudflare e do Google), que já resolve a maior parte dos casos.
+### Opção B: Metered (sem cartão)
+
+A [Metered](https://www.metered.ca/stun-turn) tem um plano grátis de TURN que não pede cartão. O app **ainda não suporta** esse caso: precisa de uma mudança pequena no `apps/worker/src/index.ts` pra buscar as credenciais da Metered em vez das da Cloudflare. Fica pra quando alguém realmente precisar.
 
 ## Deploy pelo seu PC (alternativa)
 
