@@ -2,13 +2,13 @@
   "name": "simple-call-app",
   "private": true,
   "version": "0.1.0",
-  "description": "Chamadas estilo Meet para jogar e transmitir com os amigos, direto entre os navegadores (WebRTC P2P).",
+  "description": "Chamadas estilo Meet para jogar e transmitir com os amigos, direto entre os navegadores (WebRTC P2P) e hospedado na Cloudflare.",
   "packageManager": "pnpm@10.28.0",
   "scripts": {
     "dev": "pnpm -r --parallel dev",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
-    "start": "pnpm --filter @simple-call/server start"
+    "deploy": "pnpm --filter @simple-call/worker exec wrangler deploy --config ../../wrangler.jsonc"
   },
   "license": "MIT"
 }

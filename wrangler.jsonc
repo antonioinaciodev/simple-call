@@ -1,0 +1,21 @@
+// Configuração do Cloudflare Workers: o mesmo Worker serve o site (apps/web/dist)
+// e a API (/api/*), e cada call vira um Durable Object que faz a sinalização.
+{
+  "name": "simple-call",
+  "main": "apps/worker/src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "apps/web/dist",
+    "binding": "ASSETS",
+    // Rotas do app (/abc-defg-hij) caem no index.html.
+    "not_found_handling": "single-page-application",
+    // Só a API passa pelo Worker; o resto sai direto dos arquivos estáticos.
+    "run_worker_first": ["/api/*"]
+  },
+  "durable_objects": {
+    "bindings": [{ "name": "ROOMS", "class_name": "Room" }]
+  },
+  // Durable Objects com SQLite são os que entram no plano grátis.
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }],
+  "observability": { "enabled": true }
+}

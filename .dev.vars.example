@@ -1,0 +1,6 @@
+# Copie para .dev.vars pra usar no `pnpm dev` (o Wrangler lê esse arquivo).
+# Em produção, estes valores ficam como Secrets do Worker no painel da Cloudflare.
+
+# Opcional: TURN da Cloudflare, pra quando a conexão direta entre duas pessoas falhar.
+# CF_TURN_KEY_ID=
+# CF_TURN_API_TOKEN=

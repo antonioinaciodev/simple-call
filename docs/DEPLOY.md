@@ -1,43 +1,50 @@
 # Colocando no ar
 
-O Simple Call é P2P: áudio e vídeo vão direto entre os navegadores. O servidor só apresenta as pessoas da call, então ele é leve e cabe no plano grátis do Render, sem cartão.
+O Simple Call é P2P: áudio e vídeo vão direto entre os navegadores. O servidor só apresenta as pessoas da call, então tudo cabe no plano grátis da **Cloudflare**, sem cartão:
 
-## 1. Render (site + sinalização)
-
-1. Entre em [render.com](https://render.com) com o GitHub.
-2. **New → Blueprint** e escolha o repositório `simple-call`. O Render lê o `render.yaml` e cria o serviço no plano grátis.
-3. Clique em **Apply** e espere o build (uns 3 minutos). O endereço fica tipo `https://simple-call-xxxx.onrender.com`.
-
-Se o Blueprint pedir cartão, crie na mão: **New → Web Service**, mesmo repositório, plano **Free**, com:
-
-| Campo | Valor |
+| Peça | Onde roda |
 | --- | --- |
-| Build Command | `npx pnpm@10 install --frozen-lockfile && npx pnpm@10 build` |
-| Start Command | `NODE_ENV=production node apps/server/dist/index.js` |
-| Variáveis | `NODE_VERSION=22` |
+| Site (`apps/web`) | Arquivos estáticos do Worker |
+| API e sinalização (`apps/worker`) | Cloudflare Workers + um Durable Object por call |
+| TURN (opcional) | Cloudflare Realtime |
 
-Cada merge no `main` faz o Render publicar a versão nova sozinho.
+Nada "dorme": o primeiro acesso é instantâneo. Os servidores da Cloudflare mais perto de cada pessoa atendem (tem vários no Brasil).
 
-### O site "dorme"
+## 1. Conta e deploy automático
 
-No plano grátis o Render desliga o site depois de 15 minutos sem acesso; o primeiro acesso depois disso leva uns 30 a 60 segundos. Pra deixar sempre ligado, crie um job grátis no [cron-job.org](https://cron-job.org) que acessa `https://SEU-SITE.onrender.com/api/health` a cada 10 minutos. As 750 horas grátis por mês do Render cobrem o mês inteiro.
+1. Crie uma conta grátis em [dash.cloudflare.com](https://dash.cloudflare.com/sign-up).
+2. No menu, abra **Workers & Pages** → **Create** → **Import a repository**.
+3. Conecte o GitHub e escolha o repositório `simple-call`.
+4. Preencha:
+
+   | Campo | Valor |
+   | --- | --- |
+   | Project name | `simple-call` (tem que ser igual ao `name` do `wrangler.jsonc`) |
+   | Build command | `npx pnpm@10 install --frozen-lockfile && npx pnpm@10 build` |
+   | Deploy command | `npx pnpm@10 run deploy` |
+   | Root directory | deixe vazio (raiz do repositório) |
+
+5. **Deploy**. Em uns 2 minutos o app fica em `https://simple-call.SEU-SUBDOMINIO.workers.dev`. Na primeira vez a Cloudflare pede pra escolher esse subdomínio.
+
+Cada merge no `main` publica a versão nova sozinho.
+
+Os nomes dos menus da Cloudflare mudam de vez em quando; se algo não bater, procure por "Workers" e "Import a repository".
 
 ## 2. TURN (opcional, pra quem não conecta direto)
 
 Na maioria das redes os navegadores se conectam direto. Em algumas (4G, CGNAT de operadora, rede de empresa ou faculdade) isso falha, e a pessoa entra na call mas ninguém se ouve. O TURN resolve repassando a mídia só pra essas conexões. No painel de estatísticas aparece **via TURN** quando ele está em uso.
 
-A Cloudflare tem TURN com **1.000 GB grátis por mês**:
+O TURN da Cloudflare tem **1.000 GB grátis por mês**:
 
-1. Entre no [painel da Cloudflare](https://dash.cloudflare.com) (conta grátis).
-2. Vá em **Realtime → TURN Server** e crie uma chave (**Create**).
-3. Anote o **Turn Token ID** e o **API Token**.
-4. No Render, abra o serviço `simple-call` → **Environment** e adicione:
+1. No painel, abra **Realtime → TURN Server** e crie uma chave.
+2. Anote o **Turn Token ID** e o **API Token**.
+3. Abra o Worker `simple-call` → **Settings → Variables and Secrets** e adicione dois **Secrets**:
    - `CF_TURN_KEY_ID` = o Turn Token ID
    - `CF_TURN_API_TOKEN` = o API Token
-5. Salve; o Render reinicia o serviço sozinho.
+4. Salve. A próxima call já usa o TURN quando precisar.
 
 Sem essas variáveis o app usa só STUN (grátis, da Cloudflare e do Google), que já resolve a maior parte dos casos.
 
-## Rodando em outro lugar
+## Deploy pelo seu PC (alternativa)
 
-O servidor é um app Node comum (`apps/server`) que serve também o front já buildado. Qualquer hospedagem com Node 22 e WebSocket serve: rode `npx pnpm@10 install && npx pnpm@10 build` e depois `NODE_ENV=production node apps/server/dist/index.js`. A porta vem da variável `PORT` (padrão 3001).
+Sem conectar o GitHub, dá pra publicar do seu PC: `npx pnpm@10 build` e depois `npx pnpm@10 run deploy`. Na primeira vez o Wrangler abre o navegador pra você entrar na conta da Cloudflare.

@@ -1,12 +1,12 @@
-import { randomInt } from 'node:crypto';
-
 // Códigos no estilo do Meet: "kqx-mfta-pzr". 26^10 combinações, impossível de adivinhar na prática.
 const ALPHABET = 'abcdefghijklmnopqrstuvwxyz';
 const CODE_RE = /^[a-z]{3}-[a-z]{4}-[a-z]{3}$/;
 
 function chunk(size: number): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(size));
+  // 26 não divide 256: descartar o resto evita que algumas letras saiam mais que outras.
   let out = '';
-  for (let i = 0; i < size; i++) out += ALPHABET[randomInt(ALPHABET.length)];
+  for (const b of bytes) out += b < 234 ? ALPHABET[b % 26] : chunk(1);
   return out;
 }
 
