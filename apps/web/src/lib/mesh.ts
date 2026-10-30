@@ -82,12 +82,15 @@ export class Mesh {
   private ws: WebSocket;
   private closed = false;
   private joined = false;
+  private ping: ReturnType<typeof setInterval>;
 
   constructor(private opts: Options) {
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
     const qs = new URLSearchParams({ room: opts.room, name: opts.name });
     this.ws = new WebSocket(`${proto}://${location.host}/api/signal?${qs}`);
     this.ws.onmessage = (e) => this.onServer(JSON.parse(e.data) as ServerMsg);
+    // Mantém a sinalização viva: conexões paradas são derrubadas por inatividade no caminho.
+    this.ping = setInterval(() => this.ws.readyState === WebSocket.OPEN && this.ws.send('{"type":"ping"}'), 30_000);
     this.ws.onclose = (e) => {
       // Sem ter entrado ainda, não tem call pra continuar. Depois de entrar, a call segue direto
       // entre as pessoas mesmo se o servidor cair; só não dá pra entrar gente nova.
@@ -101,6 +104,7 @@ export class Mesh {
 
   leave() {
     this.closed = true;
+    clearInterval(this.ping);
     this.ws.close();
     for (const p of this.peers.values()) p.pc.close();
     this.peers.clear();

@@ -1,0 +1,15 @@
+{
+  "name": "@simple-call/worker",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node -e \"require('fs').mkdirSync('../web/dist',{recursive:true})\" && wrangler dev --config ../../wrangler.jsonc --port 3001",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20261014.1",
+    "typescript": "^7.0.2",
+    "wrangler": "4.150.0"
+  }
+}

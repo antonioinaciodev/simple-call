@@ -20,11 +20,11 @@ Chamadas leves pra jogar e transmitir com os amigos. Estilo Meet: você cria a c
 ## Como funciona
 
 ```
-navegador ──WebSocket──> servidor (Node + Hono) ──> só apresenta as pessoas da call
+navegador ──WebSocket──> Cloudflare Worker ──> só apresenta as pessoas da call
 navegador <────────── WebRTC P2P ──────────> amigo
 ```
 
-Áudio, vídeo e chat vão **direto entre os navegadores** (P2P). O servidor só existe pra apresentar as pessoas: troca as mensagens de conexão e sai do caminho. Por isso ele é leve e roda no plano grátis do Render.
+Áudio, vídeo e chat vão **direto entre os navegadores** (P2P). O servidor só existe pra apresentar as pessoas: troca as mensagens de conexão e sai do caminho. Por isso ele é leve e roda no plano grátis da Cloudflare (Workers, com um Durable Object por call).
 
 Cada pessoa tem uma conexão com cada uma das outras. Quem transmite manda uma cópia da tela pra cada pessoa assistindo (até 8 Mbps cada no 1080p 60), então o P2P funciona melhor com até umas 4 ou 5 pessoas.
 
@@ -33,11 +33,11 @@ Quando a conexão direta não rola (comum no 4G e em algumas operadoras), um ser
 | Pasta | O que tem |
 | --- | --- |
 | `apps/web` | Front em React + Vite + TypeScript, com a malha P2P em `src/lib/mesh.ts` |
-| `apps/server` | Cria o código das calls, faz a sinalização (WebSocket) e entrega os servidores STUN/TURN |
+| `apps/worker` | Cloudflare Worker: cria o código das calls, faz a sinalização (WebSocket) e entrega os servidores STUN/TURN |
 
 ## Rodando no seu PC
 
-Só precisa do **Node 22+** e do **Git**. Nada é instalado no sistema: o pnpm roda via `npx`.
+Só precisa do **Node 22+** e do **Git**. Nada é instalado no sistema: o pnpm roda via `npx` e o Wrangler (que simula a Cloudflare no seu PC) fica dentro do projeto.
 
 ```bash
 git clone https://github.com/antonioinaciodev/simple-call
@@ -46,9 +46,9 @@ npx pnpm@10 install
 npx pnpm@10 dev
 ```
 
-O `dev` sobe o servidor (porta 3001) e o front em http://localhost:5173. Clique em **Nova call** e abra o mesmo link em outra aba ou navegador pra simular um amigo.
+O `dev` sobe o Worker local (porta 3001) e o front em http://localhost:5173. Clique em **Nova call** e abra o mesmo link em outra aba ou navegador pra simular um amigo.
 
-Pra mudar a porta ou configurar o TURN, copie `.env.example` pra `.env`.
+Pra testar o TURN no PC, copie `.dev.vars.example` pra `.dev.vars` e preencha.
 
 ## Limitações conhecidas
 
@@ -67,7 +67,7 @@ Pra mudar a porta ou configurar o TURN, copie `.env.example` pra `.env`.
 
 ## Colocando no ar
 
-O [passo a passo de deploy](docs/DEPLOY.md) coloca o app no Render, de graça e sem cartão, e mostra como ligar o TURN da Cloudflare pra quem não consegue conexão direta.
+O [passo a passo de deploy](docs/DEPLOY.md) coloca tudo na Cloudflare, de graça e sem cartão: site, sinalização e o TURN pra quem não consegue conexão direta.
 
 ## Licença
 
