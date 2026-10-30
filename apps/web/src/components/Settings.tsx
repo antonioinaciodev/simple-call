@@ -1,26 +1,49 @@
-import { useMediaDeviceSelect, useRoomContext } from '@livekit/components-react';
-import { Track } from 'livekit-client';
 import { X } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { SetPrefs } from '../App';
-import { audioCapture, audioPublish, type Prefs } from '../lib/prefs';
+import type { Prefs } from '../lib/prefs';
 import { AUDIO_PRESETS, CODECS } from '../lib/presets';
+import type { MediaActions } from './Call';
 
 interface Props {
   prefs: Prefs;
   setPrefs: SetPrefs;
+  actions: MediaActions;
   onClose: () => void;
 }
 
-function DeviceSelect({ kind, label }: { kind: MediaDeviceKind; label: string }) {
-  const room = useRoomContext();
-  const { devices, activeDeviceId, setActiveMediaDevice } = useMediaDeviceSelect({ kind, room });
-  if (devices.length === 0) return null;
+function useDevices() {
+  const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
+  useEffect(() => {
+    const load = () => navigator.mediaDevices.enumerateDevices().then(setDevices, () => {});
+    load();
+    navigator.mediaDevices.addEventListener('devicechange', load);
+    return () => navigator.mediaDevices.removeEventListener('devicechange', load);
+  }, []);
+  return devices;
+}
+
+function DeviceSelect({
+  devices,
+  kind,
+  label,
+  value,
+  onChange,
+}: {
+  devices: MediaDeviceInfo[];
+  kind: MediaDeviceKind;
+  label: string;
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  const list = devices.filter((d) => d.kind === kind && d.deviceId);
+  if (list.length === 0) return null;
   return (
     <label className="field">
       <span>{label}</span>
-      <select className="input" value={activeDeviceId} onChange={(e) => setActiveMediaDevice(e.target.value)}>
-        {devices.map((d) => (
+      <select className="input" value={list.some((d) => d.deviceId === value) ? value : ''} onChange={(e) => onChange(e.target.value)}>
+        <option value="">Padrão do sistema</option>
+        {list.map((d) => (
           <option key={d.deviceId} value={d.deviceId}>
             {d.label || 'Dispositivo sem nome'}
           </option>
@@ -42,26 +65,15 @@ function Toggle({ label, hint, checked, onChange }: { label: string; hint: strin
   );
 }
 
-export function Settings({ prefs, setPrefs, onClose }: Props) {
-  const room = useRoomContext();
+export function Settings({ prefs, setPrefs, actions, onClose }: Props) {
+  const devices = useDevices();
   const [applying, setApplying] = useState(false);
 
-  // Bitrate e processamento do áudio são definidos na publicação da faixa,
-  // então pra mudar com o mic ligado a gente republica o microfone (leva ~1 s).
-  async function updateAudio(patch: Partial<Prefs>) {
-    const next = { ...prefs, ...patch };
+  async function update(patch: Partial<Prefs>, recapture: 'mic' | 'camera' | 'none' = 'none') {
     setPrefs(patch);
-    const lp = room.localParticipant;
-    const pub = lp.getTrackPublication(Track.Source.Microphone);
-    if (!pub?.track) return;
-    const wasOn = lp.isMicrophoneEnabled;
     setApplying(true);
-    try {
-      await lp.unpublishTrack(pub.track);
-      if (wasOn) await lp.setMicrophoneEnabled(true, audioCapture(next), audioPublish(next));
-    } finally {
-      setApplying(false);
-    }
+    await actions.applyPrefs({ ...prefs, ...patch }, recapture);
+    setApplying(false);
   }
 
   return (
@@ -75,9 +87,9 @@ export function Settings({ prefs, setPrefs, onClose }: Props) {
       <div className="settings">
         <section>
           <h3>Dispositivos</h3>
-          <DeviceSelect kind="audioinput" label="Microfone" />
-          <DeviceSelect kind="audiooutput" label="Saída de áudio" />
-          <DeviceSelect kind="videoinput" label="Câmera" />
+          <DeviceSelect devices={devices} kind="audioinput" label="Microfone" value={prefs.micId} onChange={(id) => update({ micId: id }, 'mic')} />
+          <DeviceSelect devices={devices} kind="audiooutput" label="Saída de áudio" value={prefs.speakerId} onChange={(id) => setPrefs({ speakerId: id })} />
+          <DeviceSelect devices={devices} kind="videoinput" label="Câmera" value={prefs.camId} onChange={(id) => update({ camId: id }, 'camera')} />
         </section>
 
         <section>
@@ -89,7 +101,7 @@ export function Settings({ prefs, setPrefs, onClose }: Props) {
                   type="radio"
                   name="audio-preset"
                   checked={prefs.audioPreset === q.id}
-                  onChange={() => updateAudio({ audioPreset: q.id })}
+                  onChange={() => update({ audioPreset: q.id }, 'mic')}
                 />
                 <span className="option-main">{q.label}</span>
                 <span className="option-hint">
@@ -102,31 +114,25 @@ export function Settings({ prefs, setPrefs, onClose }: Props) {
             label="Cancelamento de eco"
             hint="Desligue se usa fone e quer o som mais natural."
             checked={prefs.echoCancellation}
-            onChange={(v) => updateAudio({ echoCancellation: v })}
+            onChange={(v) => update({ echoCancellation: v }, 'mic')}
           />
           <Toggle
             label="Supressão de ruído"
             hint="Corta ventilador, teclado e barulho de fundo."
             checked={prefs.noiseSuppression}
-            onChange={(v) => updateAudio({ noiseSuppression: v })}
+            onChange={(v) => update({ noiseSuppression: v }, 'mic')}
           />
           <Toggle
             label="Ganho automático"
             hint="Ajusta o volume do mic sozinho."
             checked={prefs.autoGainControl}
-            onChange={(v) => updateAudio({ autoGainControl: v })}
+            onChange={(v) => update({ autoGainControl: v }, 'mic')}
           />
           <Toggle
             label="DTX"
             hint="Não envia nada enquanto você está em silêncio. Economiza banda."
             checked={prefs.dtx}
-            onChange={(v) => updateAudio({ dtx: v })}
-          />
-          <Toggle
-            label="RED"
-            hint="Manda áudio redundante pra aguentar perda de pacote."
-            checked={prefs.red}
-            onChange={(v) => updateAudio({ red: v })}
+            onChange={(v) => update({ dtx: v })}
           />
         </section>
 
@@ -139,7 +145,7 @@ export function Settings({ prefs, setPrefs, onClose }: Props) {
                   type="radio"
                   name="codec"
                   checked={prefs.videoCodec === c.id}
-                  onChange={() => setPrefs({ videoCodec: c.id })}
+                  onChange={() => update({ videoCodec: c.id })}
                 />
                 <span className="option-main">{c.label}</span>
                 <span className="option-hint">{c.hint}</span>

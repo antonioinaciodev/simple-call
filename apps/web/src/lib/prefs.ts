@@ -1,4 +1,4 @@
-import type { AudioCaptureOptions, TrackPublishOptions, VideoCodec } from 'livekit-client';
+import type { AudioSettings, VideoCodec } from './mesh';
 import { audioPreset, type AudioPresetId } from './presets';
 import type { ScreenPresetId } from './screen';
 
@@ -11,11 +11,14 @@ export interface Prefs {
   noiseSuppression: boolean;
   autoGainControl: boolean;
   dtx: boolean;
-  red: boolean;
   screenPreset: ScreenPresetId;
   shareAudio: boolean;
   videoCodec: VideoCodec;
   theme: 'dark' | 'light';
+  // Dispositivos escolhidos nos ajustes; vazio = padrão do sistema.
+  micId: string;
+  camId: string;
+  speakerId: string;
 }
 
 export const DEFAULT_PREFS: Prefs = {
@@ -27,11 +30,13 @@ export const DEFAULT_PREFS: Prefs = {
   noiseSuppression: true,
   autoGainControl: true,
   dtx: true,
-  red: true,
   screenPreset: 'game',
   shareAudio: true,
   videoCodec: 'h264',
   theme: 'dark',
+  micId: '',
+  camId: '',
+  speakerId: '',
 };
 
 const KEY = 'simplecall:prefs';
@@ -54,8 +59,9 @@ export function savePrefs(prefs: Prefs) {
   }
 }
 
-export function audioCapture(p: Prefs): AudioCaptureOptions {
+export function micConstraints(p: Prefs): MediaTrackConstraints {
   return {
+    deviceId: p.micId ? { exact: p.micId } : undefined,
     echoCancellation: p.echoCancellation,
     noiseSuppression: p.noiseSuppression,
     autoGainControl: p.autoGainControl,
@@ -63,12 +69,15 @@ export function audioCapture(p: Prefs): AudioCaptureOptions {
   };
 }
 
-export function audioPublish(p: Prefs): TrackPublishOptions {
-  const q = audioPreset(p.audioPreset);
+export function cameraConstraints(p: Prefs): MediaTrackConstraints {
   return {
-    audioPreset: { maxBitrate: q.kbps * 1000 },
-    forceStereo: q.stereo,
-    dtx: p.dtx,
-    red: p.red,
+    deviceId: p.camId ? { exact: p.camId } : undefined,
+    width: { ideal: 1280 },
+    height: { ideal: 720 },
+    frameRate: { ideal: 30 },
   };
+}
+
+export function audioSettings(p: Prefs): AudioSettings {
+  return { maxBitrate: audioPreset(p.audioPreset).kbps * 1000, dtx: p.dtx };
 }

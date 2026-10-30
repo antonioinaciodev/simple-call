@@ -4,8 +4,7 @@ import { resolve } from 'node:path';
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { Hono } from 'hono';
-import { AccessToken } from 'livekit-server-sdk';
-import { cleanName, isRoomCode, newRoomCode } from './rooms.js';
+import { newRoomCode } from './rooms.js';
 import { attachSignaling } from './signal.js';
 
 // Carrega o .env da raiz do repositório, se existir (vale pra src/ e dist/).
@@ -16,40 +15,16 @@ try {
 }
 
 const PORT = Number(process.env.PORT ?? 3001);
-const LIVEKIT_URL = process.env.LIVEKIT_URL ?? 'ws://localhost:7880';
-const API_KEY = process.env.LIVEKIT_API_KEY ?? 'devkey';
-const API_SECRET = process.env.LIVEKIT_API_SECRET ?? 'secret';
-const TOKEN_TTL = '6h';
-
-if (process.env.NODE_ENV === 'production' && API_SECRET === 'secret') {
-  console.error('Defina LIVEKIT_API_KEY e LIVEKIT_API_SECRET de verdade em produção.');
-  process.exit(1);
-}
 
 const app = new Hono();
 
 app.get('/api/health', (c) => c.json({ ok: true }));
 
-// Gera o código de uma call nova. A sala só passa a existir no LiveKit quando alguém entra,
-// e some sozinha quando fica vazia, então não precisamos guardar nada.
+// Gera o código de uma call nova. A sala só existe enquanto tem alguém conectado
+// na sinalização, então não precisamos guardar nada.
 app.post('/api/rooms', (c) => c.json({ room: newRoomCode() }));
 
-app.post('/api/token', async (c) => {
-  const body = await c.req.json().catch(() => null);
-  const room = body?.room;
-  const name = cleanName(body?.name);
-  if (!isRoomCode(room)) return c.json({ error: 'Código de call inválido.' }, 400);
-  if (!name) return c.json({ error: 'Nome precisa ter de 1 a 32 caracteres.' }, 400);
-
-  // A identidade precisa ser única na sala; o nome pode repetir.
-  const identity = `${name.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 20)}-${crypto.randomUUID().slice(0, 6)}`;
-  const at = new AccessToken(API_KEY, API_SECRET, { identity, name, ttl: TOKEN_TTL });
-  at.addGrant({ room, roomJoin: true, canPublish: true, canSubscribe: true, canPublishData: true });
-
-  return c.json({ token: await at.toJwt(), url: LIVEKIT_URL, identity });
-});
-
-// Servidores ICE do modo P2P. STUN descobre o endereço público de cada um; o TURN (opcional,
+// Servidores ICE pras conexões P2P. STUN descobre o endereço público de cada um; o TURN (opcional,
 // da Cloudflare) repassa a mídia quando a conexão direta não rola, comum no 4G e em CGNAT.
 const STUN = { urls: ['stun:stun.cloudflare.com:3478', 'stun:stun.l.google.com:19302'] };
 const TURN_KEY_ID = process.env.CF_TURN_KEY_ID;
@@ -81,6 +56,6 @@ if (existsSync(webDist)) {
 }
 
 const server = serve({ fetch: app.fetch, port: PORT }, (info) => {
-  console.log(`API ouvindo em http://localhost:${info.port} (LiveKit: ${LIVEKIT_URL})`);
+  console.log(`API ouvindo em http://localhost:${info.port}`);
 });
 attachSignaling(server as Server);

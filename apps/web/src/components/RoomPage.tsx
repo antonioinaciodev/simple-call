@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import type { SetPrefs } from '../App';
-import { getSession, type Session } from '../lib/api';
 import type { Prefs } from '../lib/prefs';
 import { Call } from './Call';
 import { PreJoin } from './PreJoin';
@@ -12,14 +11,13 @@ interface Props {
   navigate: (to: string) => void;
 }
 
-type Stage = { kind: 'prejoin' } | { kind: 'call'; session: Session } | { kind: 'left'; reason?: string };
+type Stage = { kind: 'prejoin' } | { kind: 'call' } | { kind: 'left'; reason?: string };
 
 export function RoomPage({ code, prefs, setPrefs, navigate }: Props) {
   const [stage, setStage] = useState<Stage>({ kind: 'prejoin' });
 
   async function join() {
-    const session = await getSession(code, prefs.name);
-    setStage({ kind: 'call', session });
+    setStage({ kind: 'call' });
   }
 
   if (stage.kind === 'prejoin') {
@@ -29,7 +27,6 @@ export function RoomPage({ code, prefs, setPrefs, navigate }: Props) {
     return (
       <Call
         code={code}
-        session={stage.session}
         prefs={prefs}
         setPrefs={setPrefs}
         onLeave={(reason) => setStage({ kind: 'left', reason })}

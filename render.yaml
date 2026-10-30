@@ -1,5 +1,5 @@
-# Deploy grátis no Render (site + API). O áudio e vídeo ficam no LiveKit Cloud.
-# Passo a passo em docs/DEPLOY.md, opção "Nuvem grátis".
+# Deploy grátis no Render: o servidor só apresenta as pessoas da call (sinalização);
+# áudio e vídeo vão direto entre os navegadores. Passo a passo em docs/DEPLOY.md.
 services:
   - type: web
     name: simple-call
@@ -12,10 +12,3 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "22"
-      # Os três valores abaixo vêm do LiveKit Cloud; o Render pede na criação.
-      - key: LIVEKIT_URL
-        sync: false
-      - key: LIVEKIT_API_KEY
-        sync: false
-      - key: LIVEKIT_API_SECRET
-        sync: false

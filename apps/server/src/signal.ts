@@ -2,7 +2,7 @@ import type { Server } from 'node:http';
 import { WebSocketServer, type WebSocket } from 'ws';
 import { cleanName, isRoomCode } from './rooms.js';
 
-// Sinalização do modo P2P: o servidor só apresenta as pessoas da sala e repassa as mensagens
+// Sinalização das calls P2P: o servidor só apresenta as pessoas da sala e repassa as mensagens
 // de conexão (oferta, resposta e candidatos ICE). Áudio, vídeo e chat vão direto entre elas.
 
 const MAX_PEERS = 6;
