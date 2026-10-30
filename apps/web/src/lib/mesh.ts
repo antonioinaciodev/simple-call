@@ -64,7 +64,8 @@ type ServerMsg =
   | { type: 'full' }
   | { type: 'signal'; from: string; data: SignalData };
 
-type SignalData = { description: RTCSessionDescriptionInit } | { candidate: RTCIceCandidateInit };
+// reset: a conexão comigo travou e recomecei do zero; feche a sua e espere minha nova oferta.
+type SignalData = { description: RTCSessionDescriptionInit } | { candidate: RTCIceCandidateInit } | { reset: true };
 
 type PeerMsg =
   | { type: 'state'; micOn: boolean; kinds: Record<string, MediaKind> }
@@ -72,6 +73,8 @@ type PeerMsg =
 
 const CAMERA_ENCODING: RTCRtpEncodingParameters = { maxBitrate: 1_200_000, maxFramerate: 30 };
 const SCREEN_AUDIO_BITRATE = 128_000;
+// Uma conexão normal fecha em menos de 1 s (uns 3 s pelo TURN).
+const STUCK_MS = 10_000;
 
 export class Mesh {
   readonly peers = new Map<string, Peer>();
@@ -248,13 +251,15 @@ export class Mesh {
       case 'signal':
         {
           const peer = this.peers.get(msg.from);
-          if (peer) this.enqueue(peer, () => this.onSignal(peer, msg.data));
+          // Recomeçar não entra na fila: o que chegar depois já é da conexão nova.
+          if (peer && 'reset' in msg.data) this.recreate(peer, STUCK_MS);
+          else if (peer) this.enqueue(peer, () => this.onSignal(peer, msg.data));
         }
         break;
     }
   }
 
-  private addPeer(id: string, name: string, polite: boolean) {
+  private addPeer(id: string, name: string, polite: boolean, retry = STUCK_MS) {
     const pc = new RTCPeerConnection({ iceServers: this.opts.iceServers, bundlePolicy: 'max-bundle' });
     const peer: Peer = { id, name, pc, dc: null, polite, ignoreOffer: false, queue: Promise.resolve(), sending: {}, remoteKinds: {}, micOn: true };
     this.peers.set(id, peer);
@@ -287,7 +292,26 @@ export class Mesh {
       if (pc.connectionState === 'failed') pc.restartIce();
       this.opts.onChange();
     };
+    if (!polite) this.watch(peer, retry);
     this.opts.onChange();
+  }
+
+  // Rede de segurança: negociou e a conexão nem começou a testar caminhos (um dos lados ficou sem
+  // candidatos ICE). Ela nunca vai dar "failed" e reiniciar o ICE não destrava, então quem já
+  // estava recomeça do zero e avisa a outra pessoa. A espera dobra a cada nova tentativa.
+  private watch(peer: Peer, delay: number) {
+    setTimeout(() => {
+      const { pc } = peer;
+      if (pc.connectionState !== 'new') return;
+      if (pc.signalingState !== 'stable') return this.watch(peer, delay);
+      this.sendServer(peer.id, { reset: true });
+      this.recreate(peer, delay * 2);
+    }, delay);
+  }
+
+  private recreate(peer: Peer, retry: number) {
+    peer.pc.close();
+    this.addPeer(peer.id, peer.name, peer.polite, retry);
   }
 
   private onPeerMsg(peer: Peer, msg: PeerMsg) {
@@ -315,6 +339,11 @@ export class Mesh {
     const { pc } = peer;
     // Já tem oferta minha esperando resposta: quando ela chegar, o navegador pede outra se precisar.
     if (pc.signalingState !== 'stable' || pc.connectionState === 'closed') return;
+    // Quem chega espera a primeira oferta de quem já estava, que sempre manda uma (por causa do
+    // canal de dados). Se as duas cruzassem, o educado desfaria a dele no meio da coleta de ICE e
+    // às vezes o Chrome não gera mais nenhum candidato: a conexão fica parada pra sempre. Depois
+    // de responder, o navegador pede a negociação de novo pro que ficou faltando.
+    if (peer.polite && !pc.remoteDescription) return;
     await pc.setLocalDescription();
     if (pc.localDescription) this.sendServer(peer.id, { description: pc.localDescription.toJSON() });
   }
@@ -338,7 +367,7 @@ export class Mesh {
       // Os parâmetros do encoder só valem depois que a negociação cria as camadas.
       for (const kind of ['mic', 'camera', 'screen', 'screenAudio'] as const) void this.tune(peer, kind);
       this.opts.onChange();
-    } else {
+    } else if ('candidate' in data) {
       try {
         await pc.addIceCandidate(data.candidate);
       } catch (err) {
