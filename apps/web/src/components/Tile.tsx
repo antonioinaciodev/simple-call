@@ -1,55 +1,57 @@
-import {
-  isTrackReference,
-  useConnectionQualityIndicator,
-  useIsMuted,
-  useIsSpeaking,
-  VideoTrack,
-  type TrackReferenceOrPlaceholder,
-} from '@livekit/components-react';
-import { ConnectionQuality, Track } from 'livekit-client';
 import { Maximize, MicOff, Minimize, MonitorUp, WifiOff } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 
+export interface TileItem {
+  key: string;
+  name: string;
+  isLocal: boolean;
+  isScreen: boolean;
+  track?: MediaStreamTrack;
+  micOff: boolean;
+  speaking: boolean;
+  badSignal: boolean;
+}
+
 interface Props {
-  trackRef: TrackReferenceOrPlaceholder;
+  item: TileItem;
   fit: 'cover' | 'contain';
   onClick?: () => void;
 }
 
-export function Tile({ trackRef, fit, onClick }: Props) {
-  const p = trackRef.participant;
-  const isScreen = trackRef.source === Track.Source.ScreenShare;
-  const speaking = useIsSpeaking(p);
-  // Referência estável: um objeto novo a cada render faria o hook se reinscrever em loop.
-  const micRef = useMemo(() => ({ participant: p, source: Track.Source.Microphone }), [p]);
-  const micMuted = useIsMuted(micRef);
-  const videoMuted = useIsMuted(trackRef);
-  const qualityOptions = useMemo(() => ({ participant: p }), [p]);
-  const { quality } = useConnectionQualityIndicator(qualityOptions);
+export function Tile({ item, fit, onClick }: Props) {
+  const { name, isLocal, isScreen, track } = item;
   const [preview, setPreview] = useState(false);
   const tileRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const fullscreen = useFullscreen(tileRef);
+  const stream = useMemo(() => (track ? new MediaStream([track]) : null), [track]);
 
-  const name = p.name || p.identity;
-  const label = isScreen ? `Tela de ${name}` : p.isLocal ? `${name} (você)` : name;
-  const hasVideo = isTrackReference(trackRef) && !videoMuted;
   // Mostrar a própria tela de volta gasta GPU e cria o "efeito espelho infinito";
   // por padrão mostramos só um aviso, com opção de ver a prévia.
-  const hideOwnScreen = isScreen && p.isLocal && !preview;
-  const badSignal = quality === ConnectionQuality.Poor || quality === ConnectionQuality.Lost;
-  const canFullscreen = isScreen && hasVideo && !hideOwnScreen;
+  const hideOwnScreen = isScreen && isLocal && !preview;
+  const showVideo = !!stream && !hideOwnScreen;
+  const canFullscreen = isScreen && showVideo;
+  const label = isScreen ? `Tela de ${name}` : isLocal ? `${name} (você)` : name;
+
+  useEffect(() => {
+    if (videoRef.current) videoRef.current.srcObject = showVideo ? stream : null;
+  }, [stream, showVideo]);
 
   return (
     <div
       ref={tileRef}
-      className={`tile ${speaking && !isScreen ? 'speaking' : ''} ${onClick ? 'clickable' : ''}`}
+      className={`tile ${item.speaking && !isScreen ? 'speaking' : ''} ${onClick ? 'clickable' : ''}`}
       onClick={onClick}
       onDoubleClick={canFullscreen ? fullscreen.toggle : undefined}
     >
-      {hasVideo && !hideOwnScreen ? (
-        <VideoTrack
-          trackRef={trackRef}
-          className={!isScreen && p.isLocal ? 'mirror' : undefined}
+      {showVideo ? (
+        // Sem som: o áudio de cada pessoa toca à parte (RemoteAudio).
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          className={!isScreen && isLocal ? 'mirror' : undefined}
           style={{ objectFit: fit }}
         />
       ) : hideOwnScreen ? (
@@ -70,8 +72,8 @@ export function Tile({ trackRef, fit, onClick }: Props) {
         <div className="avatar">{name.charAt(0).toUpperCase()}</div>
       )}
       <div className="tile-label">
-        {!isScreen && micMuted && <MicOff size={13} aria-label="Microfone desligado" />}
-        {badSignal && <WifiOff size={13} aria-label="Conexão ruim" />}
+        {!isScreen && item.micOff && <MicOff size={13} aria-label="Microfone desligado" />}
+        {item.badSignal && <WifiOff size={13} aria-label="Conexão ruim" />}
         <span>{label}</span>
       </div>
       {canFullscreen && (

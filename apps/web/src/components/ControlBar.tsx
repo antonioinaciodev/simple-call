@@ -1,5 +1,3 @@
-import { useLocalParticipant } from '@livekit/components-react';
-import { Track } from 'livekit-client';
 import {
   Activity,
   MessageSquare,
@@ -14,13 +12,15 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { SetPrefs } from '../App';
-import { audioCapture, audioPublish, type Prefs } from '../lib/prefs';
-import { screenPreset } from '../lib/screen';
-import type { Panel } from './Call';
+import type { Mesh } from '../lib/mesh';
+import type { Prefs } from '../lib/prefs';
+import type { MediaActions, Panel } from './Call';
 import { CopyLinkButton } from './CopyLinkButton';
-import { ShareMenu, startScreenShare } from './ShareMenu';
+import { ShareMenu } from './ShareMenu';
 
 interface Props {
+  mesh: Mesh;
+  actions: MediaActions;
   prefs: Prefs;
   setPrefs: SetPrefs;
   panel: Panel;
@@ -29,47 +29,18 @@ interface Props {
   showStats: boolean;
   toggleStats: () => void;
   onLeave: () => void;
+  toast: string;
 }
 
 const isTyping = (el: EventTarget | null) =>
   el instanceof HTMLElement && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
 
-export function ControlBar({ prefs, setPrefs, panel, setPanel, unread, showStats, toggleStats, onLeave }: Props) {
-  const { localParticipant: lp, isMicrophoneEnabled, isCameraEnabled, isScreenShareEnabled } = useLocalParticipant();
+export function ControlBar({ mesh, actions, prefs, setPrefs, panel, setPanel, unread, showStats, toggleStats, onLeave, toast }: Props) {
   const [shareOpen, setShareOpen] = useState(false);
-  const [error, setError] = useState('');
-
-  async function run(action: () => Promise<unknown>, fail: string) {
-    try {
-      setError('');
-      await action();
-    } catch (e) {
-      // Cancelar o seletor de tela do navegador não é erro.
-      if (e instanceof Error && e.name === 'NotAllowedError' && fail.includes('tela')) return;
-      setError(fail);
-      setTimeout(() => setError(''), 4000);
-    }
-  }
-
-  const toggleMic = () =>
-    run(() => {
-      setPrefs({ micOn: !isMicrophoneEnabled });
-      return lp.setMicrophoneEnabled(!isMicrophoneEnabled, audioCapture(prefs), audioPublish(prefs));
-    }, 'Não deu pra acessar o microfone.');
-
-  const toggleCam = () =>
-    run(() => {
-      setPrefs({ camOn: !isCameraEnabled });
-      return lp.setCameraEnabled(!isCameraEnabled);
-    }, 'Não deu pra acessar a câmera.');
-
-  const stopShare = () => run(() => lp.setScreenShareEnabled(false), 'Não deu pra parar a transmissão da tela.');
-
-  const share = () =>
-    run(
-      () => startScreenShare(lp, screenPreset(prefs.screenPreset), prefs.shareAudio, prefs.videoCodec),
-      'Não deu pra transmitir a tela.',
-    );
+  const { toggleMic, toggleCam, share, stopShare } = actions;
+  const isMicrophoneEnabled = !!mesh.mic;
+  const isCameraEnabled = !!mesh.camera;
+  const isScreenShareEnabled = !!mesh.screen;
 
   const togglePanel = (p: Exclude<Panel, null>) => setPanel(panel === p ? null : p);
 
@@ -87,8 +58,6 @@ export function ControlBar({ prefs, setPrefs, panel, setPanel, unread, showStats
     addEventListener('keydown', onKey);
     return () => removeEventListener('keydown', onKey);
   });
-
-  const sharing = lp.getTrackPublication(Track.Source.ScreenShare);
 
   return (
     <footer className="controls">
@@ -129,7 +98,7 @@ export function ControlBar({ prefs, setPrefs, panel, setPanel, unread, showStats
               onClose={() => setShareOpen(false)}
               onStart={() => {
                 setShareOpen(false);
-                share();
+                void share();
               }}
             />
           )}
@@ -140,7 +109,7 @@ export function ControlBar({ prefs, setPrefs, panel, setPanel, unread, showStats
       </div>
 
       <div className="controls-side right">
-        {sharing && <span className="muted small live-tag">AO VIVO · {screenPreset(prefs.screenPreset).label}</span>}
+        {mesh.screenPreset && <span className="muted small live-tag">AO VIVO · {mesh.screenPreset.label}</span>}
         <button
           className={`icon-btn small ${showStats ? 'active' : ''}`}
           onClick={toggleStats}
@@ -168,7 +137,7 @@ export function ControlBar({ prefs, setPrefs, panel, setPanel, unread, showStats
         </button>
       </div>
 
-      {error && <div className="toast">{error}</div>}
+      {toast && <div className="toast">{toast}</div>}
     </footer>
   );
 }

@@ -1,9 +1,0 @@
-# HTTPS automático (Let's Encrypt) pros dois domínios.
-{$APP_DOMAIN} {
-	encode zstd gzip
-	reverse_proxy 127.0.0.1:3001
-}
-
-{$LIVEKIT_DOMAIN} {
-	reverse_proxy 127.0.0.1:7880
-}

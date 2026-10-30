@@ -1,27 +1,29 @@
 import { SendHorizontal, X } from 'lucide-react';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import type { ChatState } from '../hooks/useChat';
+import type { ChatMessage } from '../lib/mesh';
 
 const time = (ts: number) => new Date(ts).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-export function Chat({ chat, onClose }: { chat: ChatState; onClose: () => void }) {
+interface Props {
+  messages: ChatMessage[];
+  send: (text: string) => void;
+  onClose: () => void;
+}
+
+export function Chat({ messages, send, onClose }: Props) {
   const [text, setText] = useState('');
   const listRef = useRef<HTMLDivElement>(null);
-  const [sending, setSending] = useState(false);
-  const { messages, send } = chat;
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
   }, [messages.length]);
 
-  async function submit(e: FormEvent) {
+  function submit(e: FormEvent) {
     e.preventDefault();
     const msg = text.trim();
     if (!msg) return;
     setText('');
-    setSending(true);
-    await send(msg).catch(() => setText(msg));
-    setSending(false);
+    send(msg);
   }
 
   return (
@@ -37,7 +39,7 @@ export function Chat({ chat, onClose }: { chat: ChatState; onClose: () => void }
         {messages.map((m, i) => {
           const prev = messages[i - 1];
           // Agrupa mensagens seguidas da mesma pessoa, como no Meet.
-          const grouped = prev && prev.identity === m.identity && m.timestamp - prev.timestamp < 120_000;
+          const grouped = prev && prev.from === m.from && m.timestamp - prev.timestamp < 120_000;
           return (
             <div key={m.id} className={`message ${grouped ? 'grouped' : ''}`}>
               {!grouped && (
@@ -61,7 +63,7 @@ export function Chat({ chat, onClose }: { chat: ChatState; onClose: () => void }
           aria-label="Mensagem"
           autoFocus
         />
-        <button className="icon-btn small" type="submit" disabled={sending || !text.trim()} aria-label="Enviar">
+        <button className="icon-btn small" type="submit" disabled={!text.trim()} aria-label="Enviar">
           <SendHorizontal size={16} />
         </button>
       </form>

@@ -1,0 +1,454 @@
+import type { ScreenPreset } from './screen';
+
+// Malha P2P: cada pessoa da call tem uma conexão WebRTC direta com cada uma das outras.
+// O servidor só apresenta as pessoas e repassa as mensagens de conexão; áudio, vídeo e chat
+// vão direto entre os navegadores (ou pelo TURN, quando a conexão direta não rola).
+
+export type VideoCodec = 'h264' | 'vp9' | 'av1' | 'vp8';
+export type MediaKind = 'mic' | 'camera' | 'screen' | 'screenAudio';
+
+export interface ChatMessage {
+  id: string;
+  from: string;
+  name: string;
+  isLocal: boolean;
+  text: string;
+  timestamp: number;
+}
+
+export interface Peer {
+  id: string;
+  name: string;
+  pc: RTCPeerConnection;
+  dc: RTCDataChannel | null;
+  // "Perfect negotiation": quando os dois lados oferecem ao mesmo tempo, o educado cede.
+  polite: boolean;
+  ignoreOffer: boolean;
+  // Ofertas e mensagens recebidas dessa pessoa rodam uma de cada vez, na ordem: duas operações
+  // de negociação ao mesmo tempo na mesma conexão embaralham o estado dela.
+  queue: Promise<void>;
+  // O que eu mando pra essa pessoa, um transceiver por tipo, reaproveitado a cada liga/desliga.
+  sending: Partial<Record<MediaKind, RTCRtpTransceiver>>;
+  // O que ela me manda: o tipo de cada faixa (pelo mid) e se o mic dela está ligado.
+  remoteKinds: Record<string, MediaKind>;
+  micOn: boolean;
+}
+
+export interface RemoteMedia {
+  mic?: MediaStreamTrack;
+  camera?: MediaStreamTrack;
+  screen?: MediaStreamTrack;
+  screenAudio?: MediaStreamTrack;
+}
+
+export interface AudioSettings {
+  maxBitrate: number;
+  dtx: boolean;
+}
+
+interface Options {
+  room: string;
+  name: string;
+  iceServers: RTCIceServer[];
+  codec: VideoCodec;
+  audio: AudioSettings;
+  onChange: () => void;
+  onChat: (m: ChatMessage) => void;
+  onClose: (reason: string) => void;
+}
+
+type ServerMsg =
+  | { type: 'welcome'; id: string; peers: { id: string; name: string }[] }
+  | { type: 'join'; id: string; name: string }
+  | { type: 'leave'; id: string }
+  | { type: 'full' }
+  | { type: 'signal'; from: string; data: SignalData };
+
+type SignalData = { description: RTCSessionDescriptionInit } | { candidate: RTCIceCandidateInit };
+
+type PeerMsg =
+  | { type: 'state'; micOn: boolean; kinds: Record<string, MediaKind> }
+  | { type: 'chat'; id: string; text: string; timestamp: number };
+
+const CAMERA_ENCODING: RTCRtpEncodingParameters = { maxBitrate: 1_200_000, maxFramerate: 30 };
+const SCREEN_AUDIO_BITRATE = 128_000;
+
+export class Mesh {
+  readonly peers = new Map<string, Peer>();
+  mic: MediaStreamTrack | null = null;
+  camera: MediaStreamTrack | null = null;
+  screen: MediaStream | null = null;
+  screenPreset: ScreenPreset | null = null;
+  private ws: WebSocket;
+  private closed = false;
+  private joined = false;
+
+  constructor(private opts: Options) {
+    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+    const qs = new URLSearchParams({ room: opts.room, name: opts.name });
+    this.ws = new WebSocket(`${proto}://${location.host}/api/signal?${qs}`);
+    this.ws.onmessage = (e) => this.onServer(JSON.parse(e.data) as ServerMsg);
+    this.ws.onclose = (e) => {
+      // Sem ter entrado ainda, não tem call pra continuar. Depois de entrar, a call segue direto
+      // entre as pessoas mesmo se o servidor cair; só não dá pra entrar gente nova.
+      if (!this.closed && !this.joined) this.opts.onClose(e.code === 1006 ? 'Não deu pra conectar ao servidor.' : 'A conexão com o servidor caiu.');
+    };
+  }
+
+  get name() {
+    return this.opts.name;
+  }
+
+  leave() {
+    this.closed = true;
+    this.ws.close();
+    for (const p of this.peers.values()) p.pc.close();
+    this.peers.clear();
+    for (const t of [this.mic, this.camera, ...(this.screen?.getTracks() ?? [])]) t?.stop();
+  }
+
+  // ---------- o que eu envio ----------
+
+  // Trocar ou desligar o mic não precisa renegociar: o transceiver fica e só a faixa muda.
+  setMic(track: MediaStreamTrack | null) {
+    if (this.mic !== track) this.mic?.stop();
+    this.mic = track;
+    for (const p of this.peers.values()) this.attach(p, 'mic');
+    this.broadcastState();
+    this.opts.onChange();
+  }
+
+  setCamera(track: MediaStreamTrack | null) {
+    if (this.camera !== track) this.camera?.stop();
+    this.camera = track;
+    for (const p of this.peers.values()) this.attach(p, 'camera');
+    this.opts.onChange();
+  }
+
+  async startScreen(preset: ScreenPreset, withAudio: boolean) {
+    const stream = await navigator.mediaDevices.getDisplayMedia({
+      video: { width: preset.width, height: preset.height, frameRate: preset.fps },
+      // Áudio do jogo sem cancelamento de eco nem supressão de ruído, que estragam música e efeitos.
+      audio: withAudio ? { echoCancellation: false, noiseSuppression: false, autoGainControl: false } : false,
+      // @ts-expect-error opções do Chrome ainda fora dos tipos do TS
+      systemAudio: withAudio ? 'include' : 'exclude',
+      selfBrowserSurface: 'exclude',
+      surfaceSwitching: 'include',
+    });
+    const video = stream.getVideoTracks()[0];
+    // "motion" avisa o encoder que é jogo; "detail" que é texto e precisa de nitidez.
+    video.contentHint = preset.contentHint;
+    video.addEventListener('ended', () => this.stopScreen());
+    this.screen?.getTracks().forEach((t) => t.stop());
+    this.screen = stream;
+    this.screenPreset = preset;
+    for (const p of this.peers.values()) {
+      this.attach(p, 'screen');
+      this.attach(p, 'screenAudio');
+    }
+    this.opts.onChange();
+  }
+
+  stopScreen() {
+    if (!this.screen) return;
+    this.screen.getTracks().forEach((t) => t.stop());
+    this.screen = null;
+    this.screenPreset = null;
+    for (const p of this.peers.values()) {
+      this.attach(p, 'screen');
+      this.attach(p, 'screenAudio');
+    }
+    this.opts.onChange();
+  }
+
+  setCodec(codec: VideoCodec) {
+    this.opts.codec = codec;
+  }
+
+  // Bitrate vale na hora; DTX só depois de renegociar, porque vai na descrição da conexão.
+  setAudio(audio: AudioSettings) {
+    const dtxChanged = audio.dtx !== this.opts.audio.dtx;
+    this.opts.audio = audio;
+    for (const p of this.peers.values()) {
+      void this.tune(p, 'mic');
+      if (dtxChanged) this.enqueue(p, () => this.offer(p));
+    }
+  }
+
+  sendChat(text: string) {
+    const msg = { type: 'chat' as const, id: crypto.randomUUID(), text, timestamp: Date.now() };
+    for (const p of this.peers.values()) this.sendPeer(p, msg);
+    this.opts.onChat({ id: msg.id, from: 'local', name: this.opts.name, isLocal: true, text, timestamp: msg.timestamp });
+  }
+
+  // ---------- o que eu recebo ----------
+
+  remoteMedia(peer: Peer): RemoteMedia {
+    const out: RemoteMedia = {};
+    for (const tx of peer.pc.getTransceivers()) {
+      if (tx.currentDirection !== 'recvonly' && tx.currentDirection !== 'sendrecv') continue;
+      const track = tx.receiver.track;
+      const kind = (tx.mid && peer.remoteKinds[tx.mid]) || (track.kind === 'audio' ? 'mic' : 'camera');
+      // Vídeo "mudo" é faixa sem quadros ainda (acabou de ligar): não vale mostrar tela preta.
+      if (track.kind === 'video' && track.muted) continue;
+      out[kind] = track;
+    }
+    return out;
+  }
+
+  // Volume de 0 a 1 do último pacote de áudio do mic, sem custo extra: o navegador já calcula.
+  remoteAudioLevel(peer: Peer) {
+    const tx = peer.pc.getTransceivers().find((t) => t.mid && peer.remoteKinds[t.mid] === 'mic');
+    return tx?.receiver.getSynchronizationSources()[0]?.audioLevel ?? 0;
+  }
+
+  // ---------- internos ----------
+
+  private sendServer(to: string, data: SignalData) {
+    if (this.ws.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify({ type: 'signal', to, data }));
+  }
+
+  private sendPeer(peer: Peer, msg: PeerMsg) {
+    if (peer.dc?.readyState === 'open') peer.dc.send(JSON.stringify(msg));
+  }
+
+  private broadcastState() {
+    for (const p of this.peers.values()) this.sendState(p);
+  }
+
+  private sendState(peer: Peer) {
+    const kinds: Record<string, MediaKind> = {};
+    for (const [kind, tx] of Object.entries(peer.sending)) if (tx.mid) kinds[tx.mid] = kind as MediaKind;
+    this.sendPeer(peer, { type: 'state', micOn: !!this.mic, kinds });
+  }
+
+  private onServer(msg: ServerMsg) {
+    switch (msg.type) {
+      case 'welcome':
+        this.joined = true;
+        // Quem chega é o "educado" com quem já estava: as conexões ficam simétricas e sem impasse.
+        for (const p of msg.peers) this.addPeer(p.id, p.name, true);
+        break;
+      case 'join':
+        this.addPeer(msg.id, msg.name, false);
+        break;
+      case 'leave':
+        this.peers.get(msg.id)?.pc.close();
+        this.peers.delete(msg.id);
+        this.opts.onChange();
+        break;
+      case 'full':
+        this.closed = true;
+        this.opts.onClose('A call está cheia.');
+        break;
+      case 'signal':
+        {
+          const peer = this.peers.get(msg.from);
+          if (peer) this.enqueue(peer, () => this.onSignal(peer, msg.data));
+        }
+        break;
+    }
+  }
+
+  private addPeer(id: string, name: string, polite: boolean) {
+    const pc = new RTCPeerConnection({ iceServers: this.opts.iceServers, bundlePolicy: 'max-bundle' });
+    const peer: Peer = { id, name, pc, dc: null, polite, ignoreOffer: false, queue: Promise.resolve(), sending: {}, remoteKinds: {}, micOn: true };
+    this.peers.set(id, peer);
+
+    // Canal de dados (estado e chat): só quem já estava na call cria; quem chega recebe pronto.
+    // Se os dois criassem, a primeira negociação cruzada derrubaria o canal de um dos lados.
+    const setupChannel = (dc: RTCDataChannel) => {
+      peer.dc = dc;
+      dc.onopen = () => this.sendState(peer);
+      dc.onmessage = (e) => this.onPeerMsg(peer, JSON.parse(e.data) as PeerMsg);
+    };
+    if (polite) pc.ondatachannel = (e) => setupChannel(e.channel);
+    else setupChannel(pc.createDataChannel('simplecall'));
+
+    for (const kind of ['mic', 'camera', 'screen', 'screenAudio'] as const) this.attach(peer, kind);
+
+    pc.onnegotiationneeded = () => this.enqueue(peer, () => this.offer(peer));
+    pc.onicecandidate = ({ candidate }) => {
+      if (candidate) this.sendServer(id, { candidate: candidate.toJSON() });
+    };
+    pc.ontrack = ({ track }) => {
+      track.onunmute = track.onmute = () => this.opts.onChange();
+      this.opts.onChange();
+    };
+    pc.onsignalingstatechange = () => {
+      // Os mids só existem depois da negociação; avisa a outra pessoa o que é cada faixa.
+      if (pc.signalingState === 'stable') this.sendState(peer);
+    };
+    pc.onconnectionstatechange = () => {
+      if (pc.connectionState === 'failed') pc.restartIce();
+      this.opts.onChange();
+    };
+    this.opts.onChange();
+  }
+
+  private onPeerMsg(peer: Peer, msg: PeerMsg) {
+    if (msg.type === 'state') {
+      peer.micOn = msg.micOn;
+      peer.remoteKinds = msg.kinds;
+      this.opts.onChange();
+    } else if (msg.type === 'chat' && typeof msg.text === 'string') {
+      this.opts.onChat({
+        id: msg.id,
+        from: peer.id,
+        name: peer.name,
+        isLocal: false,
+        text: msg.text.slice(0, 1000),
+        timestamp: msg.timestamp,
+      });
+    }
+  }
+
+  private enqueue(peer: Peer, task: () => Promise<void>) {
+    peer.queue = peer.queue.then(task).catch((err) => console.error('negociação', err));
+  }
+
+  private async offer(peer: Peer) {
+    const { pc } = peer;
+    // Já tem oferta minha esperando resposta: quando ela chegar, o navegador pede outra se precisar.
+    if (pc.signalingState !== 'stable' || pc.connectionState === 'closed') return;
+    await pc.setLocalDescription();
+    if (pc.localDescription) this.sendServer(peer.id, { description: pc.localDescription.toJSON() });
+  }
+
+  private async onSignal(peer: Peer, data: SignalData) {
+    const { pc } = peer;
+    if ('description' in data) {
+      const { description } = data;
+      // Como tudo passa pela fila, "não estável" aqui quer dizer que mandei uma oferta e ela
+      // cruzou com a da outra pessoa no caminho.
+      const collision = description.type === 'offer' && pc.signalingState !== 'stable';
+      peer.ignoreOffer = !peer.polite && collision;
+      if (peer.ignoreOffer) return;
+      // Resposta atrasada de uma oferta que eu já desfiz: não vale mais.
+      if (description.type === 'answer' && pc.signalingState !== 'have-local-offer') return;
+      await pc.setRemoteDescription({ type: description.type, sdp: tuneSdp(description.sdp ?? '', this.opts.audio.dtx) });
+      if (description.type === 'offer') {
+        await pc.setLocalDescription();
+        if (pc.localDescription) this.sendServer(peer.id, { description: pc.localDescription.toJSON() });
+      }
+      // Os parâmetros do encoder só valem depois que a negociação cria as camadas.
+      for (const kind of ['mic', 'camera', 'screen', 'screenAudio'] as const) void this.tune(peer, kind);
+      this.opts.onChange();
+    } else {
+      try {
+        await pc.addIceCandidate(data.candidate);
+      } catch (err) {
+        if (!peer.ignoreOffer) throw err;
+      }
+    }
+  }
+
+  private localTrack(kind: MediaKind) {
+    if (kind === 'mic') return this.mic;
+    if (kind === 'camera') return this.camera;
+    if (kind === 'screen') return this.screen?.getVideoTracks()[0] ?? null;
+    return this.screen?.getAudioTracks()[0] ?? null;
+  }
+
+  // Liga, troca ou desliga o envio de um tipo de mídia pra uma pessoa.
+  private attach(peer: Peer, kind: MediaKind) {
+    const track = this.localTrack(kind);
+    const tx = peer.sending[kind];
+    const usable = tx && tx.currentDirection !== 'stopped';
+
+    if (!track) {
+      if (!usable || tx.direction === 'inactive') return;
+      void tx.sender.replaceTrack(null);
+      // O mic só fica mudo (sem renegociar); vídeo e áudio da tela param de vez, e quem assiste
+      // fica sabendo pela renegociação que a faixa acabou.
+      if (kind !== 'mic') tx.direction = 'inactive';
+      return;
+    }
+
+    if (usable) {
+      void tx.sender.replaceTrack(track);
+      tx.direction = 'sendonly';
+      if (kind === 'screen') preferCodec(tx, this.opts.codec);
+    } else {
+      const sendEncodings = kind === 'camera' ? [CAMERA_ENCODING] : kind === 'screen' && this.screenPreset ? [screenEncoding(this.screenPreset)] : undefined;
+      const created = peer.pc.addTransceiver(track, { direction: 'sendonly', sendEncodings });
+      if (kind === 'screen') preferCodec(created, this.opts.codec);
+      peer.sending[kind] = created;
+    }
+    void this.tune(peer, kind);
+  }
+
+  private async tune(peer: Peer, kind: MediaKind) {
+    const sender = peer.sending[kind]?.sender;
+    if (!sender?.track) return;
+    const params = sender.getParameters();
+    const enc = params.encodings?.[0];
+    if (!enc) return;
+    if (kind === 'mic') enc.maxBitrate = this.opts.audio.maxBitrate;
+    else if (kind === 'screenAudio') enc.maxBitrate = SCREEN_AUDIO_BITRATE;
+    else if (kind === 'camera') Object.assign(enc, CAMERA_ENCODING);
+    else if (this.screenPreset) {
+      Object.assign(enc, screenEncoding(this.screenPreset));
+      // Jogo: sem banda, cai a nitidez e não o FPS. Texto: o contrário.
+      (params as RTCRtpSendParameters & { degradationPreference?: string }).degradationPreference =
+        this.screenPreset.contentHint === 'motion' ? 'maintain-framerate' : 'maintain-resolution';
+    }
+    await sender.setParameters(params).catch((err) => console.warn('setParameters', err));
+  }
+}
+
+const screenEncoding = (p: ScreenPreset): RTCRtpEncodingParameters => ({ maxBitrate: p.maxBitrate, maxFramerate: p.fps });
+
+// Coloca o codec escolhido na frente da lista. H.264 costuma ter encoder de hardware (placa de vídeo),
+// o que pesa menos no PC de quem transmite enquanto joga.
+function preferCodec(tx: RTCRtpTransceiver, codec: VideoCodec) {
+  const caps = RTCRtpReceiver.getCapabilities('video')?.codecs;
+  if (!caps) return;
+  const mime = `video/${codec}`;
+  const first = caps.filter((c) => c.mimeType.toLowerCase() === mime);
+  if (!first.length) return;
+  try {
+    tx.setCodecPreferences([...first, ...caps.filter((c) => c.mimeType.toLowerCase() !== mime)]);
+  } catch {
+    // Navegador sem suporte: fica com a ordem padrão.
+  }
+}
+
+// O Chrome começa todo vídeo a ~300 kbps e sobe devagar: a transmissão ficaria uns 20 segundos
+// borrada até chegar no bitrate certo. Esse parâmetro (não oficial, mas suportado há anos) faz
+// ele começar mais alto; se a rede não aguentar, o controle de banda desce normalmente.
+const START_KBPS = 2500;
+
+// Ajusta a descrição recebida, que é o que define como EU envio: início rápido do vídeo,
+// Opus em estéreo (pro áudio do jogo) e DTX (não enviar nada no silêncio) se ligado.
+export function tuneSdp(sdp: string, dtx: boolean) {
+  const lines = sdp.split('\r\n');
+  const video = new Set<string>();
+  const opus = new Set<string>();
+  for (const line of lines) {
+    const m = /^a=rtpmap:(\d+) ([\w-]+)\//.exec(line);
+    if (!m) continue;
+    if (/^(H264|VP8|VP9|AV1)$/i.test(m[2])) video.add(m[1]);
+    if (/^opus$/i.test(m[2])) opus.add(m[1]);
+  }
+  const withFmtp = new Set<string>();
+  const extra = (pt: string) => {
+    if (video.has(pt)) return [`x-google-start-bitrate=${START_KBPS}`];
+    if (opus.has(pt)) return ['stereo=1', 'sprop-stereo=1', `usedtx=${dtx ? 1 : 0}`];
+    return [];
+  };
+  const out = lines.map((line) => {
+    const m = /^a=fmtp:(\d+) (.*)$/.exec(line);
+    if (!m || !(video.has(m[1]) || opus.has(m[1]))) return line;
+    withFmtp.add(m[1]);
+    const params = m[2].split(';').filter((p) => !/^(x-google-start-bitrate|stereo|sprop-stereo|usedtx)=/.test(p));
+    return `a=fmtp:${m[1]} ${[...params, ...extra(m[1])].join(';')}`;
+  });
+  // Codecs sem linha fmtp (o VP8, por exemplo) ganham uma logo depois do rtpmap.
+  return out
+    .flatMap((line) => {
+      const m = /^a=rtpmap:(\d+) /.exec(line);
+      return m && (video.has(m[1]) || opus.has(m[1])) && !withFmtp.has(m[1]) ? [line, `a=fmtp:${m[1]} ${extra(m[1]).join(';')}`] : [line];
+    })
+    .join('\r\n');
+}

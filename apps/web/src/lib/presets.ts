@@ -1,4 +1,4 @@
-import type { VideoCodec } from 'livekit-client';
+import type { VideoCodec } from './mesh';
 
 export type AudioPresetId = 'voice-low' | 'voice' | 'voice-hd' | 'music' | 'music-hd';
 

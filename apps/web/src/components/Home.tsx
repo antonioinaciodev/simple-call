@@ -6,11 +6,11 @@ export function Home({ navigate }: { navigate: (to: string) => void }) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
-  async function newCall(prefix = '') {
+  async function newCall() {
     setBusy(true);
     setError('');
     try {
-      navigate(`${prefix}/${await createRoom()}`);
+      navigate(`/${await createRoom()}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Não foi possível criar a call.');
       setBusy(false);
@@ -34,7 +34,7 @@ export function Home({ navigate }: { navigate: (to: string) => void }) {
         <p className="muted">Sem servidor, sem canal, sem conta. Cria a call, manda o link.</p>
 
         <div className="home-actions">
-          <button className="btn primary" onClick={() => newCall()} disabled={busy}>
+          <button className="btn primary" onClick={newCall} disabled={busy}>
             {busy ? 'Criando…' : 'Nova call'}
           </button>
           <form className="join" onSubmit={join}>
@@ -54,9 +54,6 @@ export function Home({ navigate }: { navigate: (to: string) => void }) {
           </form>
         </div>
         {error && <p className="error">{error}</p>}
-        <button className="btn ghost small" onClick={() => newCall('/p2p')} disabled={busy}>
-          Testar protótipo P2P
-        </button>
       </div>
     </div>
   );

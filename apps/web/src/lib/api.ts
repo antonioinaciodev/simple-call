@@ -1,9 +1,3 @@
-export interface Session {
-  token: string;
-  url: string;
-  identity: string;
-}
-
 async function post<T>(path: string, body?: unknown): Promise<T> {
   const res = await fetch(path, {
     method: 'POST',
@@ -17,7 +11,12 @@ async function post<T>(path: string, body?: unknown): Promise<T> {
 
 export const createRoom = () => post<{ room: string }>('/api/rooms').then((r) => r.room);
 
-export const getSession = (room: string, name: string) => post<Session>('/api/token', { room, name });
+// STUN (e TURN, se o servidor tiver) pra montar as conexões P2P.
+export async function getIceServers(): Promise<RTCIceServer[]> {
+  const res = await fetch('/api/ice');
+  if (!res.ok) throw new Error(`Erro ${res.status}`);
+  return ((await res.json()) as { iceServers: RTCIceServer[] }).iceServers;
+}
 
 const CODE_RE = /^[a-z]{3}-[a-z]{4}-[a-z]{3}$/;
 
