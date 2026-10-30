@@ -80,8 +80,9 @@ export function Tile({ item, fit, onClick }: Props) {
         ) : (
           !isScreen && item.micOff && <MicOff size={13} aria-label="Microfone desligado" />
         )}
-        {item.badSignal && <WifiOff size={13} aria-label="Conexão ruim" />}
+        {item.badSignal && <WifiOff size={13} aria-hidden />}
         <span>{label}</span>
+        {item.badSignal && <span className="tile-status">reconectando…</span>}
       </div>
       {item.volume && <VolumeControl {...item.volume} label={isScreen ? 'Volume da transmissão' : `Volume de ${name}`} />}
       {canFullscreen && (

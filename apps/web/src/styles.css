@@ -406,6 +406,10 @@ select.input {
   font-size: 12px;
 }
 
+.server-down {
+  margin-left: 6px;
+}
+
 .stage-wrap {
   grid-area: stage;
   position: relative;
@@ -513,6 +517,11 @@ select.input {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.tile-label .tile-status {
+  flex-shrink: 0;
+  color: var(--muted);
 }
 
 .tile-action {
