@@ -1,7 +1,7 @@
 {
   "name": "simple-call-app",
   "private": true,
-  "version": "0.4.0",
+  "version": "0.5.1",
   "description": "Chamadas estilo Meet para jogar e transmitir com os amigos, direto entre os navegadores (WebRTC P2P) e hospedado na Cloudflare.",
   "packageManager": "pnpm@10.28.0",
   "scripts": {

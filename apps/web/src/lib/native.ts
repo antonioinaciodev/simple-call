@@ -57,6 +57,68 @@ interface CallAudioPlugin {
 const capPlatform = (globalThis as { Capacitor?: { getPlatform?: () => string } }).Capacitor?.getPlatform?.();
 export const mobilePlatform = capPlatform === 'android' || capPlatform === 'ios' ? capPlatform : null;
 
+// ---------- barras do sistema (celular) ----------
+
+// Plugin SystemBars, que já vem no Capacitor 8 (funciona nos apps já instalados).
+type CapacitorCore = typeof import('@capacitor/core');
+let bars: Promise<{ plugin: CapacitorCore['SystemBars']; type: CapacitorCore['SystemBarType'] } | null> | null = null;
+let barsFullscreen = false;
+
+// No app do celular a barra de cima (hora, bateria) fica escondida o tempo todo; na tela cheia
+// da transmissão some também a de baixo (navegação no Android, indicador de início no iPhone).
+// Puxando da borda elas aparecem por um instante.
+function applyBars() {
+  if (!mobilePlatform) return;
+  bars ??= import('@capacitor/core')
+    .then(({ SystemBars, SystemBarType }) => ({ plugin: SystemBars, type: SystemBarType }))
+    .catch(() => null);
+  const full = barsFullscreen;
+  void bars.then(async (ref) => {
+    if (!ref) return;
+    try {
+      if (full) await ref.plugin.hide();
+      else await Promise.all([ref.plugin.hide({ bar: ref.type.StatusBar }), ref.plugin.show({ bar: ref.type.NavigationBar })]);
+    } catch {
+      // App antigo sem o plugin: fica como está.
+    }
+  });
+}
+
+export function setFullscreenBars(full: boolean) {
+  barsFullscreen = full;
+  applyBars();
+}
+
+if (mobilePlatform) {
+  applyBars();
+  // Voltando de outro app, o sistema pode ter mostrado as barras de novo.
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) applyBars();
+  });
+}
+
+// ---------- site no navegador ----------
+
+// Aberto dentro de um dos apps (desktop ou celular)?
+export const inApp = !!desktop || !!mobilePlatform;
+
+// Sistemas que têm app.
+export type Os = 'windows' | 'linux' | 'android' | 'ios';
+
+// Sistema de quem está vendo a página, pra oferecer o app certo.
+export function detectOs(): Os | null {
+  const ua = navigator.userAgent;
+  if (/Android/i.test(ua)) return 'android';
+  if (/iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return 'ios';
+  if (/Windows/.test(ua)) return 'windows';
+  if (/Linux|X11|CrOS/.test(ua) && !/Mac OS X/.test(ua)) return 'linux';
+  return null;
+}
+
+// Endereço que abre a call no app instalado (o app registra o simplecall:// no sistema).
+// Do navegador, é o único jeito de abrir o app de PC; no Android o link https já abre sozinho.
+export const appLink = (code: string) => `simplecall://${code}`;
+
 // O plugin do Capacitor é um Proxy que responde a qualquer método, inclusive "then":
 // por isso ele fica guardado dentro de um objeto, nunca resolvido direto numa Promise.
 let loaded: Promise<{ plugin: CallAudioPlugin } | null> | null = null;

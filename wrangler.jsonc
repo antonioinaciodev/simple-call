@@ -9,8 +9,9 @@
     "binding": "ASSETS",
     // Rotas do app (/abc-defg-hij) caem no index.html.
     "not_found_handling": "single-page-application",
-    // Só a API passa pelo Worker; o resto sai direto dos arquivos estáticos.
-    "run_worker_first": ["/api/*"]
+    // Só a API (e o arquivo que liga o app Android ao site) passa pelo Worker; o resto sai
+    // direto dos arquivos estáticos.
+    "run_worker_first": ["/api/*", "/.well-known/*"]
   },
   "durable_objects": {
     "bindings": [{ "name": "ROOMS", "class_name": "Room" }]
