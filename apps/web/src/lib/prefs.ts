@@ -25,6 +25,10 @@ export interface Prefs {
   speakerId: string;
   // No app do celular: alto-falante, ouvido ou fone; vazio = o que o sistema escolher.
   mobileOutput: AudioOutputId | '';
+  // App desktop: áudio da transmissão no Windows (só do jogo, PC inteiro menos a call, nenhum)
+  // e o último app escolhido no Linux (pelo nome).
+  desktopAudio: 'app' | 'system' | 'none';
+  linuxAudioApp: string;
 }
 
 export const DEFAULT_PREFS: Prefs = {
@@ -46,6 +50,8 @@ export const DEFAULT_PREFS: Prefs = {
   camId: '',
   speakerId: '',
   mobileOutput: '',
+  desktopAudio: 'app',
+  linuxAudioApp: '',
 };
 
 const KEY = 'simplecall:prefs';

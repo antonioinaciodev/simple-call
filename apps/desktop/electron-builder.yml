@@ -19,6 +19,10 @@ electronLanguages: [pt-BR, en-US]
 win:
   target: nsis
   icon: build/icon.png
+  # Captura do áudio do jogo, compilada no GitHub Actions (veja native/win-audio.cpp).
+  extraResources:
+    - from: native/bin/simplecall-audio.exe
+      to: simplecall-audio.exe
 nsis:
   # Instala só pro usuário, sem pedir administrador, e abre o app no fim.
   oneClick: true

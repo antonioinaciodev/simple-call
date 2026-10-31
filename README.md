@@ -24,7 +24,7 @@ Chamadas leves pra jogar e transmitir com os amigos. Estilo Meet: você cria a c
 - **Estatísticas da conexão:** ping, rota (direta ou via TURN), resolução, FPS, bitrate e perda de pacotes.
 - Contorno em quem está falando, tela cheia na transmissão (botão ou dois cliques) e tema escuro ou claro, só em escala de cinza.
 - Funciona no celular. Os ajustes ficam salvos no navegador.
-- **Apps pra Windows, Linux, Android e iOS** ([detalhes](docs/APPS.md)): no PC, seletor próprio de tela ou janela e, no Windows, áudio do PC junto com qualquer janela; no celular, escolha entre alto-falante, ouvido e fone, e o mic segue funcionando com o app em segundo plano.
+- **Apps pra Windows, Linux, Android e iOS** ([detalhes](docs/APPS.md)): no PC, seletor próprio de tela ou janela e áudio só do jogo, sem as vozes da call (Windows e Linux); no celular, escolha entre alto-falante, ouvido e fone, e o mic segue funcionando com o app em segundo plano.
 - Atalhos: `M` microfone, `D` som da call, `V` câmera, `S` transmitir tela, `C` chat.
 
 | | |
@@ -106,8 +106,7 @@ Pra testar o TURN no PC, copie `.dev.vars.example` pra `.dev.vars` e preencha. P
 ## Limitações conhecidas
 
 - **Até 6 pessoas por call.** Como é P2P, cada pessoa a mais é mais uma conexão pra cada um.
-- **Áudio do jogo no Linux:** o navegador só consegue mandar o áudio de uma aba do Chrome junto com a tela, não o áudio do sistema ou de um jogo. No Windows funciona ao escolher "Tela inteira" (ou qualquer janela, no app desktop).
-- **Eco no áudio do sistema:** junto com o áudio do PC vão as vozes da call, então os amigos podem ouvir a própria voz de volta. A captura só do jogo vem numa próxima versão do app desktop.
+- **Áudio do jogo pelo navegador:** no Linux o navegador só manda o áudio de uma aba do Chrome; no Windows, só com "Tela inteira" e junto com as vozes da call. O [app desktop](docs/APPS.md) manda só o áudio do jogo nos dois.
 - **Push-to-talk com o jogo em foco** não dá pra fazer no navegador, porque ele só recebe teclas com a aba em foco.
 - **Sem TURN por enquanto:** quem estiver numa rede que bloqueia conexão direta não vai conectar. Até agora ninguém precisou.
 
@@ -119,7 +118,7 @@ Pra testar o TURN no PC, copie `.dev.vars.example` pra `.dev.vars` e preencha. P
 - [x] Tudo hospedado na Cloudflare (Worker + Durable Objects)
 - [x] Volume por pessoa, som de entrada e saída
 - [x] Apps pra Windows, Linux, Android e iOS
-- [ ] Áudio só do jogo no app desktop (Windows e Linux)
+- [x] Áudio só do jogo no app desktop (Windows e Linux)
 - [ ] Seletor de janelas com miniaturas e ajuste fino do encoder
 - [ ] Página inicial com os downloads
 - [ ] TURN, se alguém não conseguir conectar direto

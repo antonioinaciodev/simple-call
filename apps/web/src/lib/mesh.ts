@@ -106,6 +106,8 @@ export class Mesh {
   camera: MediaStreamTrack | null = null;
   screen: MediaStream | null = null;
   screenPreset: ScreenPreset | null = null;
+  // Para a captura de áudio do app desktop junto com a transmissão.
+  private screenCleanup: (() => void) | null = null;
   // Som da call desligado (e o mic junto), como o "ensurdecer" do Discord.
   deafened = false;
   // Sem conexão com o servidor agora, tentando voltar. A call continua direto entre as pessoas,
@@ -189,6 +191,7 @@ export class Mesh {
     this.ws.close(1000);
     for (const p of this.peers.values()) p.pc.close();
     this.peers.clear();
+    this.screenCleanup?.();
     for (const t of [this.mic, this.camera, ...(this.screen?.getTracks() ?? [])]) t?.stop();
   }
 
@@ -220,7 +223,13 @@ export class Mesh {
     this.opts.onChange();
   }
 
-  async startScreen(preset: ScreenPreset, withAudio: boolean) {
+  // appAudio: no app desktop o áudio do jogo vem à parte (sem as vozes da call) e entra na mesma transmissão.
+  // Se ele falhar, a tela segue sem áudio e o erro volta em audioError.
+  async startScreen(
+    preset: ScreenPreset,
+    withAudio: boolean,
+    appAudio?: (onEnded: () => void) => Promise<{ track: MediaStreamTrack; stop: () => void }>,
+  ): Promise<{ audioError?: string }> {
     const stream = await navigator.mediaDevices.getDisplayMedia({
       video: { width: preset.width, height: preset.height, frameRate: preset.fps },
       // Áudio do jogo sem cancelamento de eco nem supressão de ruído, que estragam música e efeitos.
@@ -234,6 +243,27 @@ export class Mesh {
     // "motion" avisa o encoder que é jogo; "detail" que é texto e precisa de nitidez.
     video.contentHint = preset.contentHint;
     video.addEventListener('ended', () => this.stopScreen());
+    let audioError: string | undefined;
+    let cleanup: (() => void) | null = null;
+    if (appAudio) {
+      try {
+        const audio = await appAudio(() => {
+          // A captura parou sozinha (o jogo fechou): a tela continua, só sem som.
+          if (this.screen !== stream) return;
+          stream.getAudioTracks().forEach((t) => {
+            t.stop();
+            stream.removeTrack(t);
+          });
+          for (const p of this.peers.values()) this.attach(p, 'screenAudio');
+        });
+        stream.addTrack(audio.track);
+        cleanup = audio.stop;
+      } catch (e) {
+        audioError = e instanceof Error ? e.message : 'failed';
+      }
+    }
+    this.screenCleanup?.();
+    this.screenCleanup = cleanup;
     this.screen?.getTracks().forEach((t) => t.stop());
     this.screen = stream;
     this.screenPreset = preset;
@@ -242,10 +272,13 @@ export class Mesh {
       this.attach(p, 'screenAudio');
     }
     this.opts.onChange();
+    return { audioError };
   }
 
   stopScreen() {
     if (!this.screen) return;
+    this.screenCleanup?.();
+    this.screenCleanup = null;
     this.screen.getTracks().forEach((t) => t.stop());
     this.screen = null;
     this.screenPreset = null;

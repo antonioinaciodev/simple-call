@@ -36,9 +36,9 @@ jobs:
               apps/desktop/release/SimpleCall-Linux.deb
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v5
+      - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -46,12 +46,26 @@ jobs:
       - name: Versão
         shell: bash
         run: echo "VERSION=$([[ $GITHUB_REF == refs/tags/v* ]] && echo ${GITHUB_REF_NAME#v} || echo 0.0.0-teste.${{ github.run_number }})" >> $GITHUB_ENV
+      # Programa nativo que captura só o áudio do jogo (native/win-audio.cpp), com o compilador da Microsoft.
+      - name: Compilar captura de áudio (Windows)
+        if: runner.os == 'Windows'
+        working-directory: apps/desktop/native
+        shell: pwsh
+        run: |
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -property installationPath
+          New-Item -ItemType Directory -Force bin | Out-Null
+          @(
+            "call `"$vs\VC\Auxiliary\Build\vcvars64.bat`"",
+            "cl /nologo /O2 /EHsc /std:c++17 /W4 win-audio.cpp /Fobin\ /Febin\simplecall-audio.exe ole32.lib mmdevapi.lib"
+          ) | Set-Content -Encoding ascii build.bat
+          cmd /c build.bat
+          if (!(Test-Path bin\simplecall-audio.exe)) { exit 1 }
       - name: Gerar instalador
         working-directory: apps/desktop
         # bash também no Windows: o PowerShell quebra o argumento -c.extraMetadata.version=...
         shell: bash
         run: pnpm build && pnpm exec electron-builder ${{ matrix.args }} --publish never -c.extraMetadata.version=${{ env.VERSION }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: desktop-${{ matrix.name }}
           path: ${{ matrix.files }}
@@ -63,13 +77,13 @@ jobs:
     env:
       KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v5
+      - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
           cache: pnpm
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 21
@@ -97,7 +111,7 @@ jobs:
             ./gradlew --no-daemon assembleDebug
             cp app/build/outputs/apk/debug/app-debug.apk ../SimpleCall-Android.apk
           fi
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: android
           path: apps/mobile/SimpleCall-Android.apk
@@ -107,9 +121,9 @@ jobs:
     name: iOS (sem assinatura)
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v5
+      - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -127,7 +141,7 @@ jobs:
           mkdir -p Payload
           cp -R build/Build/Products/Release-iphoneos/App.app Payload/
           zip -qr ../../SimpleCall-iOS-sem-assinatura.ipa Payload
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: ios
           path: apps/mobile/SimpleCall-iOS-sem-assinatura.ipa
@@ -141,12 +155,12 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           path: out
           merge-multiple: true
       - run: ls -la out
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           files: out/*
           generate_release_notes: true

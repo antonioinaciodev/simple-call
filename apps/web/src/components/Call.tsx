@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'r
 import type { SetPrefs } from '../App';
 import { useSpeaking } from '../hooks/useSpeaking';
 import { getIceServers } from '../lib/api';
-import { withCallAudio } from '../lib/native';
+import { startAppAudio } from '../lib/desktopAudio';
+import { desktop, withCallAudio } from '../lib/native';
 import { Mesh, type ChatMessage } from '../lib/mesh';
 import { audioSettings, cameraConstraints, micConstraints, type Prefs } from '../lib/prefs';
 import { screenPreset } from '../lib/screen';
@@ -30,7 +31,8 @@ export interface MediaActions {
   // Desliga o som da call e o mic juntos; ao voltar, o mic volta como estava.
   toggleDeafen: () => Promise<void>;
   toggleCam: () => Promise<void>;
-  share: () => Promise<void>;
+  // appAudio: no app desktop, o áudio do jogo vem à parte (sem as vozes da call).
+  share: (opts?: { appAudio?: boolean }) => Promise<void>;
   stopShare: () => void;
   // Aplica ajustes novos na call; mic ou câmera são recapturados (dispositivo, cancelamento de eco...)
   // e trocados sem renegociar a conexão.
@@ -38,6 +40,12 @@ export interface MediaActions {
 }
 
 const MAX_MESSAGES = 500;
+
+// Por que o áudio do jogo não foi junto (vem do app desktop).
+const AUDIO_ERRORS: Record<string, string> = {
+  'no-process': 'Não deu pra achar o programa dessa janela. A tela vai sem som; tente "PC inteiro".',
+  missing: 'Esta instalação do app não tem a captura de áudio. A tela vai sem som.',
+};
 
 async function capture(kind: 'audio' | 'video', constraints: MediaTrackConstraints) {
   const stream = await navigator.mediaDevices.getUserMedia({ [kind]: constraints });
@@ -168,8 +176,19 @@ export function Call({ code, prefs, setPrefs, onLeave }: Props) {
           setPrefs({ camOn: on });
           mesh.setCamera(on ? await capture('video', cameraConstraints(prefsRef.current)) : null);
         }, 'Não deu pra acessar a câmera.'),
-      share: () =>
-        run(() => mesh.startScreen(screenPreset(prefsRef.current.screenPreset), prefsRef.current.shareAudio), 'Não deu pra transmitir a tela.'),
+      share: (opts) =>
+        run(async () => {
+          const p = prefsRef.current;
+          const preset = screenPreset(p.screenPreset);
+          // No app desktop novo o getDisplayMedia só pega a imagem; o áudio vem do app.
+          const viaApp = !!desktop?.startAudio;
+          const { audioError } = await mesh.startScreen(
+            preset,
+            viaApp ? false : p.shareAudio,
+            opts?.appAudio ? startAppAudio : undefined,
+          );
+          if (audioError) flash(AUDIO_ERRORS[audioError] ?? 'Não deu pra pegar o áudio do jogo. A tela vai sem som.');
+        }, 'Não deu pra transmitir a tela.'),
       stopShare: () => mesh.stopScreen(),
       applyPrefs: (next, recapture) =>
         run(async () => {
