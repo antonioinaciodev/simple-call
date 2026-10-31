@@ -8,7 +8,7 @@
 // Saída: PCM float32 intercalado, 2 canais, 48 kHz. Para sozinho quando a entrada padrão fecha
 // (o app fechou ou parou a transmissão), então nunca fica processo perdido.
 //
-// Compilar (Prompt do Visual Studio): cl /nologo /O2 /EHsc /std:c++17 win-audio.cpp ole32.lib mmdevapi.lib
+// Compilar (Prompt do Visual Studio): cl /nologo /O2 /EHsc /std:c++17 win-audio.cpp ole32.lib mmdevapi.lib user32.lib
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
