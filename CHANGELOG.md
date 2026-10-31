@@ -7,6 +7,15 @@ do site sozinhos a cada merge no `main`, sem precisar baixar de novo.
 Os instaladores de cada versão estão nas [Releases](https://github.com/antonioinaciodev/simple-call/releases).
 Pra publicar uma versão nova, veja [docs/APPS.md](docs/APPS.md#gerar-uma-release).
 
+## v0.4.0 (31/10/2026)
+
+**Página inicial com os downloads e abertura animada nos apps**
+
+- No navegador, a página inicial apresenta o Simple Call: começar a call ali mesmo, o que ele tem de diferente e os downloads, com o do seu sistema primeiro.
+- Nos apps (PC e celular), uma abertura curta: o ponto "liga" como uma call conectando, o nome aparece e some. Aparece uma vez cada vez que o app abre e respeita quem desliga animações no sistema.
+- Dentro dos apps a página inicial continua só com a entrada da call.
+- O tema claro já aparece no primeiro quadro, sem piscar o escuro antes.
+
 ## v0.3.0 (31/10/2026)
 
 **Seletor de janelas com miniaturas e ajuste fino do encoder** ([#18](https://github.com/antonioinaciodev/simple-call/pull/18))

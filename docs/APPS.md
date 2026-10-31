@@ -125,7 +125,9 @@ No Android Studio, ligue o celular com a depuração USB ativada e clique em ▶
   liga o `CallService` (serviço com notificação que o Android exige pra usar o mic em segundo plano).
   `www/index.html` é a tela de "sem conexão".
 - **Site** (`apps/web/src/lib/native.ts`): detecta se está dentro de um app e usa essas pontes. No
-  navegador nada muda. O `@capacitor/core` só é baixado dentro do app do celular.
+  navegador nada muda. Dentro dos apps a página inicial mostra só a entrada da call (sem os
+  downloads), e a abertura animada fica no `apps/web/index.html`, em CSS puro, pra aparecer antes
+  de carregar qualquer JavaScript. O `@capacitor/core` só é baixado dentro do app do celular.
 
 ## Limitações conhecidas
 

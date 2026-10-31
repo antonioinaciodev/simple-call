@@ -299,6 +299,153 @@ select.input {
   gap: 8px;
 }
 
+/* ---------- página inicial no navegador (landing) ---------- */
+
+.landing {
+  min-height: 100%;
+}
+
+.landing-hero {
+  min-height: 100vh;
+  min-height: 100svh;
+  display: grid;
+  place-items: center;
+  padding: 32px 16px;
+}
+
+.hero-download {
+  margin: 20px 0 0;
+}
+
+.hero-download a,
+.landing-footer a {
+  color: var(--text);
+  text-decoration: underline;
+  text-decoration-color: var(--surface-3);
+  text-underline-offset: 3px;
+}
+
+.hero-download a:hover,
+.landing-footer a:hover {
+  text-decoration-color: var(--text);
+}
+
+.hero-download svg,
+.landing-footer svg {
+  vertical-align: -2px;
+}
+
+.landing-section {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 56px 16px;
+  border-top: 1px solid var(--border);
+}
+
+.landing-section h2 {
+  margin: 0 0 8px;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.landing-section > p {
+  max-width: 620px;
+  margin: 0 0 24px;
+}
+
+.features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 28px;
+}
+
+.feature h3 {
+  margin: 12px 0 6px;
+  text-transform: none;
+  letter-spacing: -0.01em;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--strong);
+}
+
+.feature p {
+  margin: 0;
+}
+
+.feature svg {
+  color: var(--muted);
+}
+
+.downloads {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.download {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.download.mine {
+  border-color: var(--muted);
+}
+
+.download p {
+  flex: 1;
+  margin: 0;
+  font-size: 13px;
+}
+
+.download-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  font-size: 11px;
+  color: var(--text);
+}
+
+.download-files {
+  display: flex;
+  gap: 8px;
+}
+
+.download-files .btn {
+  text-decoration: none;
+}
+
+.download-files .btn:not(.primary) {
+  color: var(--text);
+}
+
+.landing-section > .small-note {
+  margin: 20px 0 0;
+  font-size: 12px;
+}
+
+.landing-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 20px;
+  padding: 28px 16px 40px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+}
+
 .prejoin {
   width: 100%;
   max-width: 920px;

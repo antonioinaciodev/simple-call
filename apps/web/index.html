@@ -4,10 +4,110 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="dark light" />
+    <meta name="description" content="Chamadas leves pra jogar e transmitir com os amigos: call por link, voz, câmera e tela em 1080p60, direto entre os navegadores. Apps pra Windows, Linux, Android e iOS." />
+    <meta property="og:title" content="simplecall" />
+    <meta property="og:description" content="Chamadas leves pra jogar e transmitir com os amigos. Cria a call, manda o link." />
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
     <title>simplecall</title>
+    <style>
+      /* Abertura dos apps: o ponto "liga" como uma call conectando, o nome aparece e tudo some.
+         Fica aqui (e não no CSS do app) pra já estar pronta antes de qualquer JavaScript. */
+      #splash {
+        position: fixed;
+        inset: 0;
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg, #0a0a0a);
+        color: var(--strong, #fafafa);
+        font: 600 22px/1 Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        letter-spacing: -0.01em;
+        animation: splash-out 450ms ease-in 1250ms forwards;
+      }
+      #splash[hidden] {
+        display: none;
+      }
+      .splash-mark {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        animation: splash-rise 450ms ease-in 1250ms forwards;
+      }
+      .splash-dot {
+        position: relative;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: currentColor;
+        animation: splash-dot 450ms cubic-bezier(0.3, 1.6, 0.5, 1) both;
+      }
+      .splash-dot::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        border: 1px solid currentColor;
+        opacity: 0;
+        animation: splash-ping 800ms ease-out 200ms;
+      }
+      .splash-word {
+        animation: splash-word 600ms cubic-bezier(0.2, 0.7, 0.2, 1) 380ms both;
+      }
+      @keyframes splash-dot {
+        from { transform: scale(0); }
+        to { transform: scale(1); }
+      }
+      @keyframes splash-ping {
+        from { opacity: 0.6; transform: scale(1); }
+        to { opacity: 0; transform: scale(3.2); }
+      }
+      @keyframes splash-word {
+        from { opacity: 0; clip-path: inset(0 100% 0 0); transform: translateX(-6px); }
+        to { opacity: 1; clip-path: inset(0 0 0 0); transform: none; }
+      }
+      @keyframes splash-rise {
+        to { transform: translateY(-8px); }
+      }
+      @keyframes splash-out {
+        to { opacity: 0; visibility: hidden; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .splash-dot, .splash-dot::after, .splash-word, .splash-mark { animation: none; }
+        #splash { animation-duration: 250ms; animation-delay: 500ms; }
+      }
+    </style>
   </head>
   <body>
+    <div id="splash" hidden aria-hidden="true">
+      <div class="splash-mark"><span class="splash-dot"></span><span class="splash-word">simplecall</span></div>
+    </div>
+    <script>
+      (function () {
+        // Tema salvo já no primeiro quadro, sem piscar o escuro pra quem usa o claro.
+        try {
+          var theme = JSON.parse(localStorage.getItem('simplecall:prefs') || '{}').theme;
+          if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme;
+        } catch (e) {}
+        // A abertura só aparece nos apps (desktop e celular), uma vez por vez que o app abre.
+        var splash = document.getElementById('splash');
+        var inApp = window.simplecallDesktop || window.Capacitor || /Electron\//.test(navigator.userAgent);
+        var seen = false;
+        try {
+          seen = sessionStorage.getItem('simplecall:splash') === '1';
+          sessionStorage.setItem('simplecall:splash', '1');
+        } catch (e) {}
+        if (!inApp || seen || location.pathname !== '/') return splash.remove();
+        splash.hidden = false;
+        var done = function () {
+          if (splash.parentNode) splash.remove();
+        };
+        splash.addEventListener('animationend', function (e) {
+          if (e.animationName === 'splash-out') done();
+        });
+        setTimeout(done, 2500);
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
