@@ -43,9 +43,19 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # A tag tem que ser vX.Y.Z (ex.: v0.4.0): o instalador do Windows não aceita outro formato.
       - name: Versão
         shell: bash
-        run: echo "VERSION=$([[ $GITHUB_REF == refs/tags/v* ]] && echo ${GITHUB_REF_NAME#v} || echo 0.0.0-teste.${{ github.run_number }})" >> $GITHUB_ENV
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            if [[ ! $GITHUB_REF_NAME =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "::error::A tag \"$GITHUB_REF_NAME\" está fora do formato. Use v e três números, ex.: v0.4.0. Apague essa tag e crie de novo."
+              exit 1
+            fi
+            echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
+          else
+            echo "VERSION=0.0.0-teste.${{ github.run_number }}" >> $GITHUB_ENV
+          fi
       # Programa nativo que captura só o áudio do jogo (native/win-audio.cpp), com o compilador da Microsoft.
       - name: Compilar captura de áudio (Windows)
         if: runner.os == 'Windows'
@@ -89,8 +99,19 @@ jobs:
           java-version: 21
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @simple-call/mobile exec cap sync android
+      # A tag tem que ser vX.Y.Z (ex.: v0.4.0): o instalador do Windows não aceita outro formato.
       - name: Versão
-        run: echo "VERSION_NAME=$([[ $GITHUB_REF == refs/tags/v* ]] && echo ${GITHUB_REF_NAME#v} || echo 0.0.0-teste)" >> $GITHUB_ENV
+        shell: bash
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            if [[ ! $GITHUB_REF_NAME =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "::error::A tag \"$GITHUB_REF_NAME\" está fora do formato. Use v e três números, ex.: v0.4.0. Apague essa tag e crie de novo."
+              exit 1
+            fi
+            echo "VERSION_NAME=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
+          else
+            echo "VERSION_NAME=0.0.0-teste" >> $GITHUB_ENV
+          fi
       # Com a chave nos segredos: APK de release assinado (dá pra atualizar por cima).
       # Sem a chave: APK de teste, assinado com uma chave temporária.
       - name: Chave de assinatura
