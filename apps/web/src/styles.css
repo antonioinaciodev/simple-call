@@ -318,6 +318,7 @@ select.input {
 }
 
 .hero-download a,
+.open-in-app a,
 .landing-footer a {
   color: var(--text);
   text-decoration: underline;
@@ -326,6 +327,7 @@ select.input {
 }
 
 .hero-download a:hover,
+.open-in-app a:hover,
 .landing-footer a:hover {
   text-decoration-color: var(--text);
 }
@@ -486,6 +488,11 @@ select.input {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.open-in-app {
+  margin: 0;
+  text-align: center;
 }
 
 .code-row {

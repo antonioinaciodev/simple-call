@@ -57,6 +57,28 @@ interface CallAudioPlugin {
 const capPlatform = (globalThis as { Capacitor?: { getPlatform?: () => string } }).Capacitor?.getPlatform?.();
 export const mobilePlatform = capPlatform === 'android' || capPlatform === 'ios' ? capPlatform : null;
 
+// ---------- site no navegador ----------
+
+// Aberto dentro de um dos apps (desktop ou celular)?
+export const inApp = !!desktop || !!mobilePlatform;
+
+// Sistemas que têm app.
+export type Os = 'windows' | 'linux' | 'android' | 'ios';
+
+// Sistema de quem está vendo a página, pra oferecer o app certo.
+export function detectOs(): Os | null {
+  const ua = navigator.userAgent;
+  if (/Android/i.test(ua)) return 'android';
+  if (/iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return 'ios';
+  if (/Windows/.test(ua)) return 'windows';
+  if (/Linux|X11|CrOS/.test(ua) && !/Mac OS X/.test(ua)) return 'linux';
+  return null;
+}
+
+// Endereço que abre a call no app instalado (o app registra o simplecall:// no sistema).
+// Do navegador, é o único jeito de abrir o app de PC; no Android o link https já abre sozinho.
+export const appLink = (code: string) => `simplecall://${code}`;
+
 // O plugin do Capacitor é um Proxy que responde a qualquer método, inclusive "then":
 // por isso ele fica guardado dentro de um objeto, nunca resolvido direto numa Promise.
 let loaded: Promise<{ plugin: CallAudioPlugin } | null> | null = null;

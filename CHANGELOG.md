@@ -7,6 +7,14 @@ do site sozinhos a cada merge no `main`, sem precisar baixar de novo.
 Os instaladores de cada versão estão nas [Releases](https://github.com/antonioinaciodev/simple-call/releases).
 Pra publicar uma versão nova, veja [docs/APPS.md](docs/APPS.md#gerar-uma-release).
 
+## v0.5.0 (31/10/2026)
+
+**Link de convite abre direto no app** ([#22](https://github.com/antonioinaciodev/simple-call/pull/22))
+
+- Android: tocar no link da call (no WhatsApp, Discord, onde for) abre direto no app, sem passar pelo navegador.
+- Windows, Linux e iPhone: a página da call no navegador ganhou o botão "Abrir no app". O navegador pergunta se pode abrir o Simple Call e o app já entra na call, mesmo se estiver aberto.
+- No Linux, o "Abrir no app" funciona com o `.deb` (o AppImage não registra no sistema).
+
 ## v0.4.0 (31/10/2026)
 
 **Página inicial com os downloads e abertura animada nos apps** ([#20](https://github.com/antonioinaciodev/simple-call/pull/20))

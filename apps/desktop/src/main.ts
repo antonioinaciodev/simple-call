@@ -11,6 +11,20 @@ const PROD_URL = 'https://simplecall.antonioinaciodev.workers.dev';
 const APP_URL = new URL((!app.isPackaged && process.env.SIMPLECALL_URL) || PROD_URL);
 const APP_ORIGIN = APP_URL.origin;
 
+// Link de convite: o botão "Abrir no app" do site manda pra simplecall://abc-defg-hij.
+// O Windows e o Linux entregam esse endereço como argumento ao abrir o app (ou pro app que já
+// está aberto, pelo second-instance). Link https não dá: navegador de PC nunca repassa pra app.
+const SCHEME = 'simplecall';
+const CODE_RE = /^[a-z]{3}-[a-z]{4}-[a-z]{3}$/;
+
+function callLink(argv: string[]): string | null {
+  const arg = argv.find((a) => a.toLowerCase().startsWith(`${SCHEME}:`));
+  if (!arg) return null;
+  // simplecall://abc-defg-hij, simplecall://call/abc-defg-hij ou simplecall:abc-defg-hij
+  const code = arg.slice(SCHEME.length + 1).split(/[/?#]/).filter(Boolean).pop()?.toLowerCase() ?? '';
+  return CODE_RE.test(code) ? new URL(`/${code}`, APP_URL).href : null;
+}
+
 // O que o site pediu pra transmitir: escolhido no seletor do app logo antes do getDisplayMedia.
 // audio: true = áudio de tudo do PC pelo Chromium (versões antigas do site); um AudioChoice =
 // áudio só do jogo, capturado à parte em audio.ts e mandado pro site.
@@ -42,7 +56,7 @@ function openExternal(url: string) {
 
 let win: BrowserWindow | null = null;
 
-function createWindow() {
+function createWindow(url = APP_URL.href) {
   win = new BrowserWindow({
     width: 1280,
     height: 800,
@@ -65,7 +79,7 @@ function createWindow() {
   win.once('ready-to-show', () => win?.show());
   win.on('closed', () => (win = null));
   guard(win.webContents);
-  void win.loadURL(APP_URL.href);
+  void win.loadURL(url);
 }
 
 // Só o site do Simple Call roda dentro do app; qualquer outro link abre no navegador.
@@ -210,15 +224,21 @@ function parseChoice(v: unknown, sourceId: string): AudioChoice | null {
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
-  app.on('second-instance', () => {
+  app.on('second-instance', (_e, argv) => {
     if (!win) return;
     if (win.isMinimized()) win.restore();
     win.focus();
+    // Clicou num convite com o app aberto: vai pra essa call (se já não estiver nela).
+    const link = callLink(argv);
+    if (link && win.webContents.getURL() !== link) void win.loadURL(link);
   });
+  // Registra o simplecall:// pro usuário (no Windows, no registro do usuário; sem administrador).
+  // Só no instalado: rodando do código, o Windows abriria o Electron sem o app.
+  if (app.isPackaged) app.setAsDefaultProtocolClient(SCHEME);
   void app.whenReady().then(() => {
     setupSession();
     setupIpc();
-    createWindow();
+    createWindow(callLink(process.argv) ?? APP_URL.href);
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow();
     });
