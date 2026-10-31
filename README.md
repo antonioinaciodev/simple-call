@@ -14,7 +14,7 @@ Chamadas leves pra jogar e transmitir com os amigos. Estilo Meet: você cria a c
 
 ## Baixar
 
-Versão atual: **v0.4.0** ([o que mudou](CHANGELOG.md)). Dá pra usar direto no [navegador](https://simplecall.antonioinaciodev.workers.dev), sem instalar nada, ou baixar o app:
+Versão atual: **v0.5.0** ([o que mudou](CHANGELOG.md)). Dá pra usar direto no [navegador](https://simplecall.antonioinaciodev.workers.dev), sem instalar nada, ou baixar o app:
 
 | Sistema | Download | Observação |
 | --- | --- | --- |
@@ -30,6 +30,7 @@ Os apps abrem o mesmo site por dentro, então as novidades do site chegam sozinh
 **Call**
 
 - **Call por link:** crie uma call e entre pelo link ou pelo código (`abc-defg-hij`), só com o nome. Até 6 pessoas por call.
+- **O convite abre no app:** no Android o link já abre direto no app; no PC e no iPhone, a página da call no navegador tem o botão "Abrir no app".
 - **Microfone e câmera**, com prévia antes de entrar e escolha de dispositivo (mic, câmera e saída de áudio).
 - **Chat** dentro da call. As mensagens somem quando a call acaba.
 - **Volume de cada um:** cada amigo tem o próprio volume (de 0 a 200%), que fica salvo pro próximo encontro. A transmissão tem um volume separado das vozes.
@@ -152,6 +153,7 @@ Pra testar o TURN no PC, copie `.dev.vars.example` pra `.dev.vars` e preencha. P
 - [x] Áudio só do jogo no app desktop, Windows e Linux (v0.2.0)
 - [x] Seletor de janelas com miniaturas e ajuste fino do encoder (v0.3.0)
 - [x] Página inicial com os downloads e abertura animada nos apps (v0.4.0)
+- [x] Link de convite abre direto no app (v0.5.0)
 - [ ] TURN, se alguém não conseguir conectar direto
 - [ ] Senha ou sala de espera na call
 
