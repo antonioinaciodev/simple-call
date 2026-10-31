@@ -7,7 +7,7 @@ da parte nativa (pastas `apps/desktop` e `apps/mobile`).
 
 | | Pasta | Tecnologia | O que o app faz além do site |
 | --- | --- | --- | --- |
-| Windows e Linux | `apps/desktop` | Electron | Seletor próprio de tela ou janela; manda só o áudio do jogo, sem as vozes da call; a call não engasga com a janela minimizada |
+| Windows e Linux | `apps/desktop` | Electron | Seletor próprio de tela ou janela, com miniaturas; manda só o áudio do jogo, sem as vozes da call; a call não engasga com a janela minimizada |
 | Android | `apps/mobile/android` | Capacitor | Escolher alto-falante, ouvido ou fone; mic continua funcionando com o app em segundo plano (notificação "Na call") |
 | iOS | `apps/mobile/ios` | Capacitor | Escolher alto-falante, ouvido ou fone; som continua em segundo plano |
 
@@ -29,16 +29,23 @@ Os instaladores ficam nas [Releases](https://github.com/antonioinaciodev/simple-
 O workflow [`.github/workflows/apps.yml`](../.github/workflows/apps.yml) gera tudo no GitHub Actions
 (Windows, Linux, Android e iOS rodam em máquinas da GitHub, de graça em repositório público).
 
-1. Faça o merge do que quiser no `main`.
-2. Crie uma tag de versão pelo terminal:
+1. No PR da versão, escreva no [`CHANGELOG.md`](../CHANGELOG.md) a seção da versão nova
+   (`## v0.4.0 (dia/mês/ano)`) e atualize o `version` dos `package.json`. O texto da Release sai
+   dessa seção do CHANGELOG.
+2. Faça o merge no `main`.
+3. Crie a tag da versão pelo terminal:
    ```bash
    git checkout main && git pull
-   git tag v0.2.0
-   git push origin v0.2.0
+   git tag v0.4.0
+   git push origin v0.4.0
    ```
-   Ou pelo site: **Releases → Draft a new release → Choose a tag**, digite `v0.2.0`,
+   Ou pelo site: **Releases → Draft a new release → Choose a tag**, digite `v0.4.0`,
    **Create new tag** e **Publish release**.
-3. Em uns 10 minutos a Release `v0.2.0` fica com os instaladores e uma tabela de downloads.
+4. Em uns 10 minutos a Release `v0.4.0` fica com os instaladores, as novidades do CHANGELOG e uma
+   tabela de downloads.
+
+As versões seguem `MAIOR.MENOR.CORREÇÃO`: por enquanto cada leva de novidades sobe o do meio
+(`v0.3.0` → `v0.4.0`) e uma correção sozinha sobe o último (`v0.3.0` → `v0.3.1`).
 
 Em todo PR que mexe em `apps/desktop` ou `apps/mobile`, o mesmo workflow roda e deixa os arquivos
 pra teste em **Actions → (a execução) → Artifacts**, sem publicar nada.

@@ -155,23 +155,34 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v5
       - uses: actions/download-artifact@v7
         with:
           path: out
           merge-multiple: true
       - run: ls -la out
+      # Texto da Release: a parte da versão no CHANGELOG.md + a tabela de downloads.
+      - name: Notas da versão
+        run: |
+          awk -v v="## ${GITHUB_REF_NAME} " 'index($0, v) == 1 { on = 1; next } on && /^## / { exit } on' CHANGELOG.md > release.md
+          if [ ! -s release.md ]; then echo "::warning::CHANGELOG.md não tem a seção ${GITHUB_REF_NAME}"; fi
+          cat >> release.md <<'EOF'
+
+          ## Downloads
+
+          | Sistema | Arquivo |
+          | --- | --- |
+          | Windows 10/11 | `SimpleCall-Windows.exe` (o Windows pode avisar "protegeu o computador": Mais informações → Executar assim mesmo) |
+          | Linux | `SimpleCall-Linux.AppImage` (qualquer distro) ou `SimpleCall-Linux.deb` (Ubuntu, Mint, Debian) |
+          | Android | `SimpleCall-Android.apk` (permita instalar de fontes desconhecidas) |
+          | iOS | `SimpleCall-iOS-sem-assinatura.ipa` (só com Sideloadly/AltStore, veja docs/APPS.md) |
+
+          Ou use direto no navegador: https://simplecall.antonioinaciodev.workers.dev
+          EOF
+          cat release.md
       - uses: softprops/action-gh-release@v3
         with:
+          name: Simple Call ${{ github.ref_name }}
           files: out/*
+          body_path: release.md
           generate_release_notes: true
-          body: |
-            ## Downloads
-
-            | Sistema | Arquivo |
-            | --- | --- |
-            | Windows 10/11 | `SimpleCall-Windows.exe` (o Windows pode avisar "protegeu o computador": Mais informações → Executar assim mesmo) |
-            | Linux | `SimpleCall-Linux.AppImage` (qualquer distro) ou `SimpleCall-Linux.deb` (Ubuntu, Mint, Debian) |
-            | Android | `SimpleCall-Android.apk` (permita instalar de fontes desconhecidas) |
-            | iOS | `SimpleCall-iOS-sem-assinatura.ipa` (só com Sideloadly/AltStore, veja docs/APPS.md) |
-
-            Ou use direto no navegador: https://simplecall.antonioinaciodev.workers.dev
