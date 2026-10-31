@@ -13,6 +13,23 @@ contextBridge.exposeInMainWorld('simplecallDesktop', {
   // Telas e janelas abertas, só com o nome (rápido).
   listSources: (): Promise<DesktopSource[]> => ipcRenderer.invoke('sources:list'),
   // Guarda a escolha; o getDisplayMedia logo em seguida transmite ela.
-  selectSource: (id: string, name: string, audio: boolean): Promise<boolean> =>
+  // audio: true (áudio do PC inteiro) ou { mode: 'none' | 'app' | 'system' | 'stream', streamId? }.
+  selectSource: (id: string, name: string, audio: unknown): Promise<boolean> =>
     ipcRenderer.invoke('sources:select', id, name, audio),
+  // Áudio só do jogo: o que dá pra capturar, apps tocando (Linux), começar e parar.
+  audioSupport: () => ipcRenderer.invoke('audio:support'),
+  audioApps: () => ipcRenderer.invoke('audio:apps'),
+  startAudio: () => ipcRenderer.invoke('audio:start'),
+  stopAudio: () => ipcRenderer.invoke('audio:stop'),
+  // Pedaços de PCM float32 (2 canais, 48 kHz). Devolve a função que para de ouvir.
+  onAudio: (onData: (chunk: Uint8Array) => void, onEnd: () => void) => {
+    const data = (_e: unknown, chunk: Uint8Array) => onData(chunk);
+    const end = () => onEnd();
+    ipcRenderer.on('audio:pcm', data);
+    ipcRenderer.on('audio:ended', end);
+    return () => {
+      ipcRenderer.removeListener('audio:pcm', data);
+      ipcRenderer.removeListener('audio:ended', end);
+    };
+  },
 });

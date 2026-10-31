@@ -7,7 +7,7 @@ da parte nativa (pastas `apps/desktop` e `apps/mobile`).
 
 | | Pasta | Tecnologia | O que o app faz além do site |
 | --- | --- | --- | --- |
-| Windows e Linux | `apps/desktop` | Electron | Seletor próprio de tela ou janela; no Windows manda o áudio do PC com qualquer janela; a call não engasga com a janela minimizada |
+| Windows e Linux | `apps/desktop` | Electron | Seletor próprio de tela ou janela; manda só o áudio do jogo, sem as vozes da call; a call não engasga com a janela minimizada |
 | Android | `apps/mobile/android` | Capacitor | Escolher alto-falante, ouvido ou fone; mic continua funcionando com o app em segundo plano (notificação "Na call") |
 | iOS | `apps/mobile/ios` | Capacitor | Escolher alto-falante, ouvido ou fone; som continua em segundo plano |
 
@@ -102,7 +102,16 @@ No Android Studio, ligue o celular com a depuração USB ativada e clique em ▶
   Call rodar nela (outros links abrem no navegador) e mostra `offline.html` se a internet cair.
   `preload.ts` expõe pro site `window.simplecallDesktop` com `listSources()` (telas e janelas, só
   com o nome, pra abrir rápido) e `selectSource()`. O site mostra o próprio seletor e, quando chama
-  `getDisplayMedia`, o app entrega a escolha (com `audio: 'loopback'` no Windows).
+  `getDisplayMedia`, o app entrega a escolha (só a imagem).
+- **Áudio só do jogo** (`apps/desktop/src/audio.ts`): o app captura o som à parte e manda pro site
+  como PCM (float32, 2 canais, 48 kHz); o site toca isso num AudioWorklet e vira a faixa de áudio da
+  transmissão (`apps/web/src/lib/desktopAudio.ts`).
+  - **Windows:** `native/win-audio.cpp` vira `simplecall-audio.exe` (compilado no GitHub Actions) e
+    usa o *process loopback* do WASAPI (Windows 10 2004 ou mais novo): "Só do jogo" pega o processo
+    dono da janela escolhida; "PC inteiro" pega tudo menos o próprio Simple Call.
+  - **Linux:** lista os apps tocando som com `pactl` e grava só o escolhido com
+    `parec --monitor-stream` (funciona com PipeWire e PulseAudio). Precisa do pacote
+    `pulseaudio-utils`, que já vem na maioria das distros.
 - **Celular** (`apps/mobile`): o Capacitor abre o site num WebView. O plugin nativo `CallAudio`
   (`CallAudioPlugin.java` e `CallAudioPlugin.swift`) lista e troca a saída de áudio e, no Android,
   liga o `CallService` (serviço com notificação que o Android exige pra usar o mic em segundo plano).
@@ -112,9 +121,9 @@ No Android Studio, ligue o celular com a depuração USB ativada e clique em ▶
 
 ## Limitações conhecidas
 
-- **Eco no áudio do PC (Windows):** o app manda o áudio de tudo que toca no PC, inclusive as vozes
-  da call, então os amigos podem ouvir a própria voz de volta. A correção é capturar só o áudio do
-  jogo (ou tudo menos o Simple Call), que precisa de código nativo e vem num PR próprio.
-- **Áudio do jogo no Linux:** ainda não vai junto. Também vem nesse PR (pelo PipeWire).
+- **Áudio do jogo no Windows** precisa do Windows 10 versão 2004 (2020) ou mais novo.
+- **Jogo que toca o som por outro programa** (alguns launchers): use "PC inteiro".
+- **Rodando o app pelo código (`start`)** no Windows, a captura de áudio só funciona se você
+  compilar `native/win-audio.cpp` (precisa do Visual Studio); no instalador ela já vem pronta.
 - **Transmitir a tela pelo celular** não é possível no WebView; o botão nem aparece no celular.
 - **macOS:** dá pra gerar, mas ficou de fora por enquanto (vocês usam Windows e Linux).

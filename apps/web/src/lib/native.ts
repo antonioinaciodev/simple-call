@@ -7,10 +7,28 @@ export interface DesktopSource {
   kind: 'screen' | 'window';
 }
 
+// Áudio da transmissão no app desktop.
+// none: sem áudio · app: só o programa da janela escolhida (Windows) · system: PC inteiro menos a call
+// (Windows) · stream: um app da lista de apps tocando (Linux).
+export type DesktopAudioChoice = { mode: 'none' } | { mode: 'app' } | { mode: 'system' } | { mode: 'stream'; streamId: string };
+
+export interface DesktopAudioSupport {
+  app: boolean;
+  system: boolean;
+  streams: boolean;
+}
+
 interface DesktopBridge {
   platform: string;
   listSources: () => Promise<DesktopSource[]>;
-  selectSource: (id: string, name: string, audio: boolean) => Promise<boolean>;
+  // audio: true = áudio do PC inteiro junto com o vídeo (versão 0.1 do app).
+  selectSource: (id: string, name: string, audio: boolean | DesktopAudioChoice) => Promise<boolean>;
+  // Da versão 0.2 do app em diante (instalações antigas não têm).
+  audioSupport?: () => Promise<DesktopAudioSupport | null>;
+  audioApps?: () => Promise<{ id: string; name: string }[]>;
+  startAudio?: () => Promise<{ ok: boolean; error?: string }>;
+  stopAudio?: () => Promise<void>;
+  onAudio?: (onData: (chunk: Uint8Array) => void, onEnd: () => void) => () => void;
 }
 
 // Exposto pelo preload do app desktop (apps/desktop/src/preload.ts).

@@ -162,11 +162,14 @@ export function ControlBar({ mesh, actions, prefs, setPrefs, panel, setPanel, un
       {toast && <div className="toast">{toast}</div>}
       {pickerOpen && desktop && (
         <SourcePicker
+          prefs={prefs}
+          setPrefs={setPrefs}
           onClose={() => setPickerOpen(false)}
-          onPick={async (source) => {
+          onPick={async (source, audio) => {
             setPickerOpen(false);
-            await desktop!.selectSource(source.id, source.name, prefs.shareAudio && desktop!.platform === 'win32');
-            void share();
+            await desktop!.selectSource(source.id, source.name, audio);
+            // Escolha nova (objeto): o áudio vem à parte, só do jogo. true/false: app antigo.
+            void share({ appAudio: typeof audio === 'object' && audio.mode !== 'none' });
           }}
         />
       )}

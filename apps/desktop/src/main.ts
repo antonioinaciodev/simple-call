@@ -4,6 +4,7 @@
 // do Chrome e mandar o áudio do PC junto com qualquer janela no Windows.
 import { app, BrowserWindow, desktopCapturer, ipcMain, session, shell, type WebContents } from 'electron';
 import path from 'node:path';
+import { audioApps, audioSupport, startAudio, stopAudio, type AudioChoice } from './audio';
 
 const PROD_URL = 'https://simplecall.antonioinaciodev.workers.dev';
 // SIMPLECALL_URL só vale fora do instalador (pnpm start:local aponta pro Vite).
@@ -11,13 +12,16 @@ const APP_URL = new URL((!app.isPackaged && process.env.SIMPLECALL_URL) || PROD_
 const APP_ORIGIN = APP_URL.origin;
 
 // O que o site pediu pra transmitir: escolhido no seletor do app logo antes do getDisplayMedia.
+// audio: true = áudio de tudo do PC pelo Chromium (versões antigas do site); um AudioChoice =
+// áudio só do jogo, capturado à parte em audio.ts e mandado pro site.
 interface Pick {
   id: string;
   name: string;
-  audio: boolean;
+  audio: boolean | AudioChoice;
   at: number;
 }
 let pick: Pick | null = null;
+let audioChoice: AudioChoice = { mode: 'none' };
 
 // Desempenho: a call não pode engasgar quando a janela fica atrás do jogo ou minimizada.
 app.commandLine.appendSwitch('disable-renderer-backgrounding');
@@ -129,7 +133,7 @@ function setupSession() {
     callback({
       video: { id: chosen.id, name: chosen.name },
       // "loopback" = áudio de tudo que toca no PC. Só existe no Windows.
-      ...(chosen.audio && request.audioRequested && process.platform === 'win32' ? { audio: 'loopback' as const } : {}),
+      ...(chosen.audio === true && request.audioRequested && process.platform === 'win32' ? { audio: 'loopback' as const } : {}),
     });
   });
 }
@@ -156,9 +160,31 @@ function setupIpc() {
   });
   ipcMain.handle('sources:select', (e, id: unknown, name: unknown, audio: unknown) => {
     if (!isAppUrl(e.sender.getURL()) || typeof id !== 'string' || typeof name !== 'string') return false;
-    pick = { id, name, audio: audio === true, at: Date.now() };
+    const choice = parseChoice(audio, id);
+    pick = { id, name, audio: choice ?? audio === true, at: Date.now() };
+    audioChoice = choice ?? { mode: 'none' };
     return true;
   });
+
+  ipcMain.handle('audio:support', (e) => (isAppUrl(e.sender.getURL()) ? audioSupport() : null));
+  ipcMain.handle('audio:apps', (e) => (isAppUrl(e.sender.getURL()) ? audioApps() : []));
+  ipcMain.handle('audio:start', (e) => {
+    if (!isAppUrl(e.sender.getURL())) return { ok: false };
+    return startAudio(audioChoice, e.sender);
+  });
+  ipcMain.handle('audio:stop', () => stopAudio());
+}
+
+// Escolha de áudio vinda do site, conferida campo a campo.
+function parseChoice(v: unknown, sourceId: string): AudioChoice | null {
+  if (!v || typeof v !== 'object') return null;
+  const c = v as Record<string, unknown>;
+  if (c.mode === 'none') return { mode: 'none' };
+  if (c.mode === 'system') return { mode: 'system' };
+  if (c.mode === 'app' && sourceId.startsWith('window:')) return { mode: 'app', sourceId };
+  if (c.mode === 'app') return { mode: 'system' }; // tela inteira: tudo menos a call
+  if (c.mode === 'stream' && typeof c.streamId === 'string') return { mode: 'stream', streamId: c.streamId };
+  return null;
 }
 
 // Um app só: abrir de novo traz a janela que já está aberta pra frente.
@@ -178,6 +204,7 @@ if (!app.requestSingleInstanceLock()) {
       if (BrowserWindow.getAllWindows().length === 0) createWindow();
     });
   });
+  app.on('before-quit', stopAudio);
   app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit();
   });

@@ -6,3 +6,5 @@ dist
 *.log
 .DS_Store
 apps/desktop/release
+apps/desktop/native/bin
+apps/desktop/native/build.bat
