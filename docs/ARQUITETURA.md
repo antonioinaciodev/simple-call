@@ -67,10 +67,14 @@ Cada pessoa tem um `RTCPeerConnection` com cada uma das outras (malha completa).
 
 ## Qualidade
 
-- **Presets de tela** (`src/lib/screen.ts`): resolução, FPS e bitrate máximo por pessoa assistindo. Os de jogo usam `contentHint = 'motion'` e `degradationPreference = 'maintain-framerate'`: quando a banda aperta, cai a nitidez e não o FPS. O de texto faz o contrário.
-- **Codec** (`preferCodec`): o escolhido vai pra frente da lista. H.264 é o padrão porque quase sempre tem encoder na placa de vídeo, o que pesa menos no PC de quem joga e transmite.
+O ajuste fino fica em `src/lib/tuning.ts` (ideias do [Vcall](https://github.com/victor-kauan-coder/Vcall)).
+
+- **Presets de tela** (`src/lib/screen.ts`): resolução, FPS e bitrate máximo por pessoa assistindo. Os de jogo usam `contentHint = 'motion'` e `degradationPreference = 'maintain-framerate'`: quando a banda aperta, cai a nitidez e não o FPS. O de texto usa `contentHint = 'text'` (liga as ferramentas do encoder pra conteúdo de tela) e faz o contrário.
+- **Codec** (`pickCodec`, `preferCodec`): no automático (padrão), cada um pergunta à placa de vídeo (`mediaCapabilities`) o que codifica e decodifica sem pesar e conta pros outros pelo canal de dados. A transmissão pra cada pessoa usa AV1 ou VP9 quando os dois lados têm na placa; senão H.264 pra jogo (toda placa codifica) e VP9 pra texto. O escolhido vai pra frente da lista, sem tirar o `rtx`, que faz a retransmissão.
+- **Prioridade**: `priority`/`networkPriority` altos pra voz e transmissão, médio pro áudio da tela e baixo pra câmera. Com banda curta, o navegador tira da câmera primeiro.
+- **Resolução pela banda** (`scaleForBitrate`, a cada 2 s): jogo a 60 fps pede uns 0,06 bit por pixel. Se a banda que a conexão dá pra transmissão (`targetBitrate`) não cobre isso, a imagem encolhe um degrau (`scaleResolutionDownBy` 1,25 a 3) na hora, em vez de perder quadros. Volta a crescer só com 30% de folga por 15 s seguidos, e nada muda nos primeiros 8 s (a banda ainda está subindo).
 - **Início rápido**: o Chrome começa todo vídeo a uns 300 kbps e sobe devagar. O `tuneSdp` coloca `x-google-start-bitrate` na descrição recebida pra transmissão já começar perto de 2,5 Mbps.
-- **Áudio**: Opus com `stereo=1` (pro áudio do jogo) e DTX opcional (não envia nada no silêncio). O bitrate do mic vem do preset escolhido nos ajustes (`src/lib/presets.ts`); o áudio da tela vai a 128 kbps, sem cancelamento de eco nem supressão de ruído.
+- **Áudio** (`tuneSdp`, seção por seção pelo `mid`): todo Opus com FEC. O mic vai com redundância (RED: cada pacote leva uma cópia do anterior, então perda isolada não corta a voz), DTX opcional e mono, a não ser nas qualidades de música. O áudio da tela vai em estéreo, a 128 kbps e sem DTX (que cortaria o fim das notas), sem cancelamento de eco nem supressão de ruído.
 
 ## Outras peças do front
 

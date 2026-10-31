@@ -101,7 +101,8 @@ No Android Studio, ligue o celular com a depuração USB ativada e clique em ▶
 - **Desktop** (`apps/desktop/src`): `main.ts` abre uma janela com o site, deixa só o site do Simple
   Call rodar nela (outros links abrem no navegador) e mostra `offline.html` se a internet cair.
   `preload.ts` expõe pro site `window.simplecallDesktop` com `listSources()` (telas e janelas, só
-  com o nome, pra abrir rápido) e `selectSource()`. O site mostra o próprio seletor e, quando chama
+  com o nome, pra abrir rápido), `listThumbnails()` (as miniaturas, pedidas logo depois; no Wayland não
+  tem) e `selectSource()`. O site mostra o próprio seletor e, quando chama
   `getDisplayMedia`, o app entrega a escolha (só a imagem).
 - **Áudio só do jogo** (`apps/desktop/src/audio.ts`): o app captura o som à parte e manda pro site
   como PCM (float32, 2 canais, 48 kHz); o site toca isso num AudioWorklet e vira a faixa de áudio da

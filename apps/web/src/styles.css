@@ -810,6 +810,61 @@ select.input {
   margin-top: 0;
 }
 
+.source-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Com miniaturas: grade de cartões, a imagem em cinza até passar o mouse. */
+.source-picker.with-thumbs {
+  width: min(600px, 100%);
+  max-height: min(680px, calc(100vh - 32px));
+}
+
+.with-thumbs .source-group {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 8px;
+}
+
+.with-thumbs .source {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 8px;
+  min-width: 0;
+}
+
+.source-thumb {
+  display: block;
+  aspect-ratio: 16 / 9;
+  border-radius: 6px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.source-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: grayscale(1);
+  transition: filter 0.15s;
+}
+
+.source:hover .source-thumb img,
+.source:focus-visible .source-thumb img {
+  filter: none;
+}
+
+.source-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
 .source {
   display: flex;
   align-items: center;

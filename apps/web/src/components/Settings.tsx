@@ -199,12 +199,12 @@ export function Settings({ prefs, setPrefs, actions, onClose }: Props) {
           <h3>Codec da transmissão</h3>
           <div className="options">
             {CODECS.map((c) => (
-              <label key={c.id} className={`option ${prefs.videoCodec === c.id ? 'selected' : ''}`}>
+              <label key={c.id} className={`option ${prefs.screenCodec === c.id ? 'selected' : ''}`}>
                 <input
                   type="radio"
                   name="codec"
-                  checked={prefs.videoCodec === c.id}
-                  onChange={() => update({ videoCodec: c.id })}
+                  checked={prefs.screenCodec === c.id}
+                  onChange={() => update({ screenCodec: c.id })}
                 />
                 <span className="option-main">{c.label}</span>
                 <span className="option-hint">{c.hint}</span>

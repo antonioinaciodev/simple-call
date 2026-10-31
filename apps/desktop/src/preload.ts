@@ -12,6 +12,8 @@ contextBridge.exposeInMainWorld('simplecallDesktop', {
   platform: process.platform,
   // Telas e janelas abertas, só com o nome (rápido).
   listSources: (): Promise<DesktopSource[]> => ipcRenderer.invoke('sources:list'),
+  // Miniatura de cada tela e janela (id → imagem), mais lenta: vem depois da lista.
+  listThumbnails: (): Promise<Record<string, string>> => ipcRenderer.invoke('sources:thumbnails'),
   // Guarda a escolha; o getDisplayMedia logo em seguida transmite ela.
   // audio: true (áudio do PC inteiro) ou { mode: 'none' | 'app' | 'system' | 'stream', streamId? }.
   selectSource: (id: string, name: string, audio: unknown): Promise<boolean> =>

@@ -14,11 +14,14 @@ interface Props {
 
 type AudioApp = { id: string; name: string };
 
-// Seletor de tela ou janela do app desktop: só nomes, sem miniaturas, pra abrir na hora.
+// Seletor de tela ou janela do app desktop. Abre na hora só com os nomes; as miniaturas
+// (mais lentas de tirar) chegam logo depois, nas versões do app que têm.
 // Embaixo, de onde vem o áudio da transmissão.
 export function SourcePicker({ prefs, setPrefs, onPick, onClose }: Props) {
   const [sources, setSources] = useState<DesktopSource[] | null>(null);
   const [error, setError] = useState(false);
+  const [thumbs, setThumbs] = useState<Record<string, string>>({});
+  const withThumbs = !!desktop!.listThumbnails;
   // undefined = ainda carregando; null = app antigo, sem áudio só do jogo.
   const [support, setSupport] = useState<DesktopAudioSupport | null | undefined>(desktop!.audioSupport ? undefined : null);
   const [apps, setApps] = useState<AudioApp[]>([]);
@@ -26,9 +29,21 @@ export function SourcePicker({ prefs, setPrefs, onPick, onClose }: Props) {
   const [streamId, setStreamId] = useState('');
 
   const load = useCallback(() => {
+    let live = true;
     setError(false);
-    desktop!.listSources().then(setSources, () => setError(true));
-    desktop!.audioApps?.().then(setApps, () => {});
+    desktop!
+      .listSources()
+      .then((list) => {
+        if (!live) return;
+        setSources(list);
+        // Uma fonte só = Wayland, onde o sistema já escolheu: não tem o que mostrar.
+        if (list.length > 1) desktop!.listThumbnails?.().then((t) => live && setThumbs(t), () => {});
+      })
+      .catch(() => live && setError(true));
+    desktop!.audioApps?.().then((a) => live && setApps(a), () => {});
+    return () => {
+      live = false;
+    };
   }, []);
 
   useEffect(load, [load]);
@@ -81,11 +96,11 @@ export function SourcePicker({ prefs, setPrefs, onPick, onClose }: Props) {
 
   return (
     <div className="modal-backdrop" onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal source-picker" role="dialog" aria-label="Escolher o que transmitir">
+      <div className={`modal source-picker ${withThumbs ? 'with-thumbs' : ''}`} role="dialog" aria-label="Escolher o que transmitir">
         <div className="panel-head">
           <h2>O que transmitir?</h2>
           <div className="panel-head-actions">
-            <button className="icon-btn small ghost" onClick={load} title="Atualizar a lista" aria-label="Atualizar a lista">
+            <button className="icon-btn small ghost" onClick={() => void load()} title="Atualizar a lista" aria-label="Atualizar a lista">
               <RefreshCw size={16} />
             </button>
             <button className="icon-btn small ghost" onClick={onClose} aria-label="Fechar">
@@ -102,19 +117,17 @@ export function SourcePicker({ prefs, setPrefs, onPick, onClose }: Props) {
         ) : (
           <div className="source-list">
             {screens.length > 0 && <h3>Telas</h3>}
-            {screens.map((s) => (
-              <button key={s.id} className="source" onClick={() => pick(s)}>
-                <Monitor size={16} />
-                <span>{s.name}</span>
-              </button>
-            ))}
+            <div className="source-group">
+              {screens.map((s) => (
+                <Source key={s.id} source={s} thumb={withThumbs ? (thumbs[s.id] ?? '') : null} onPick={pick} />
+              ))}
+            </div>
             {windows.length > 0 && <h3>Janelas</h3>}
-            {windows.map((s) => (
-              <button key={s.id} className="source" onClick={() => pick(s)} title={s.name}>
-                <AppWindow size={16} />
-                <span>{s.name}</span>
-              </button>
-            ))}
+            <div className="source-group">
+              {windows.map((s) => (
+                <Source key={s.id} source={s} thumb={withThumbs ? (thumbs[s.id] ?? '') : null} onPick={pick} />
+              ))}
+            </div>
           </div>
         )}
         {support && (
@@ -122,6 +135,20 @@ export function SourcePicker({ prefs, setPrefs, onPick, onClose }: Props) {
         )}
       </div>
     </div>
+  );
+}
+
+// thumb: null = app sem miniaturas; '' = ainda chegando.
+function Source({ source, thumb, onPick }: { source: DesktopSource; thumb: string | null; onPick: (s: DesktopSource) => void }) {
+  const Icon = source.kind === 'screen' ? Monitor : AppWindow;
+  return (
+    <button className="source" onClick={() => onPick(source)} title={source.name}>
+      {thumb !== null && <span className="source-thumb">{thumb && <img src={thumb} alt="" draggable={false} />}</span>}
+      <span className="source-name">
+        <Icon size={16} />
+        <span>{source.name}</span>
+      </span>
+    </button>
   );
 }
 

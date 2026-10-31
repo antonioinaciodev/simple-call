@@ -21,6 +21,8 @@ export interface DesktopAudioSupport {
 interface DesktopBridge {
   platform: string;
   listSources: () => Promise<DesktopSource[]>;
+  // Da versão 0.3 do app em diante: miniatura de cada fonte (id → imagem).
+  listThumbnails?: () => Promise<Record<string, string>>;
   // audio: true = áudio do PC inteiro junto com o vídeo (versão 0.1 do app).
   selectSource: (id: string, name: string, audio: boolean | DesktopAudioChoice) => Promise<boolean>;
   // Da versão 0.2 do app em diante (instalações antigas não têm).

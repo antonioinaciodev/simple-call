@@ -20,11 +20,12 @@ Chamadas leves pra jogar e transmitir com os amigos. Estilo Meet: você cria a c
 - **Desligar o som da call** (como o ensurdecer do Discord): corta tudo que você ouve e o mic junto. Ao religar, o mic volta como estava.
 - **Sons da call** quando alguém entra, sai, muta ou desliga o som, e quando você muta. Dá pra desligar nos ajustes.
 - **Áudio ajustável:** de 24 a 128 kbps (estéreo nas opções de música), cancelamento de eco, supressão de ruído, ganho automático e DTX.
-- **Codec da transmissão:** H.264, VP9, AV1 ou VP8.
+- **Codec da transmissão:** automático (o melhor que a placa de vídeo de quem transmite e de quem assiste aguenta), ou H.264, VP9, AV1 e VP8 na mão.
+- **Encoder ajustado pra jogo:** a voz vai com redundância (aguenta perda de pacote no Wi-Fi e no 4G), a transmissão tem prioridade sobre a câmera, o áudio do jogo vai em estéreo sem cortes e, com pouca banda, a imagem encolhe um pouco em vez de perder quadros.
 - **Estatísticas da conexão:** ping, rota (direta ou via TURN), resolução, FPS, bitrate e perda de pacotes.
 - Contorno em quem está falando, tela cheia na transmissão (botão ou dois cliques) e tema escuro ou claro, só em escala de cinza.
 - Funciona no celular. Os ajustes ficam salvos no navegador.
-- **Apps pra Windows, Linux, Android e iOS** ([detalhes](docs/APPS.md)): no PC, seletor próprio de tela ou janela e áudio só do jogo, sem as vozes da call (Windows e Linux); no celular, escolha entre alto-falante, ouvido e fone, e o mic segue funcionando com o app em segundo plano.
+- **Apps pra Windows, Linux, Android e iOS** ([detalhes](docs/APPS.md)): no PC, seletor próprio de tela ou janela (com miniaturas) e áudio só do jogo, sem as vozes da call (Windows e Linux); no celular, escolha entre alto-falante, ouvido e fone, e o mic segue funcionando com o app em segundo plano.
 - Atalhos: `M` microfone, `D` som da call, `V` câmera, `S` transmitir tela, `C` chat.
 
 | | |
@@ -119,7 +120,7 @@ Pra testar o TURN no PC, copie `.dev.vars.example` pra `.dev.vars` e preencha. P
 - [x] Volume por pessoa, som de entrada e saída
 - [x] Apps pra Windows, Linux, Android e iOS
 - [x] Áudio só do jogo no app desktop (Windows e Linux)
-- [ ] Seletor de janelas com miniaturas e ajuste fino do encoder
+- [x] Seletor de janelas com miniaturas e ajuste fino do encoder
 - [ ] Página inicial com os downloads
 - [ ] TURN, se alguém não conseguir conectar direto
 - [ ] Senha ou sala de espera na call

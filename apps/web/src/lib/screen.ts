@@ -9,8 +9,9 @@ export interface ScreenPreset {
   fps: number;
   // Por pessoa assistindo: no P2P quem transmite manda uma cópia pra cada um.
   maxBitrate: number;
-  // "motion" segura o FPS quando a rede aperta; "detail" segura a nitidez.
-  contentHint: 'motion' | 'detail';
+  // "motion" segura o FPS quando a rede aperta; "text" segura a nitidez (e liga as ferramentas
+  // do encoder pra conteúdo de tela, que deixam letra fina legível).
+  contentHint: 'motion' | 'text';
 }
 
 export const SCREEN_PRESETS: ScreenPreset[] = [
@@ -42,7 +43,7 @@ export const SCREEN_PRESETS: ScreenPreset[] = [
     height: 1080,
     fps: 30,
     maxBitrate: 5_000_000,
-    contentHint: 'detail',
+    contentHint: 'text',
   },
   {
     id: 'light',
