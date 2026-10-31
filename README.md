@@ -14,7 +14,7 @@ Chamadas leves pra jogar e transmitir com os amigos. Estilo Meet: você cria a c
 
 ## Baixar
 
-Versão atual: **v0.3.0** ([o que mudou](CHANGELOG.md)). Dá pra usar direto no [navegador](https://simplecall.antonioinaciodev.workers.dev), sem instalar nada, ou baixar o app:
+Versão atual: **v0.4.0** ([o que mudou](CHANGELOG.md)). Dá pra usar direto no [navegador](https://simplecall.antonioinaciodev.workers.dev), sem instalar nada, ou baixar o app:
 
 | Sistema | Download | Observação |
 | --- | --- | --- |
@@ -50,7 +50,7 @@ Os apps abrem o mesmo site por dentro, então as novidades do site chegam sozinh
 - **Áudio ajustável:** de 24 a 128 kbps (estéreo nas opções de música), cancelamento de eco, supressão de ruído, ganho automático e DTX.
 - Contorno em quem está falando, tela cheia na transmissão (botão ou dois cliques) e tema escuro ou claro, só em escala de cinza.
 - Funciona no celular. Os ajustes ficam salvos no navegador.
-- **Apps pra Windows, Linux, Android e iOS** ([detalhes](docs/APPS.md)): no PC, seletor próprio de tela ou janela com miniaturas; no celular, escolha entre alto-falante, ouvido e fone, e o mic segue funcionando com o app em segundo plano.
+- **Apps pra Windows, Linux, Android e iOS** ([detalhes](docs/APPS.md)), com uma abertura animada curta: no PC, seletor próprio de tela ou janela com miniaturas; no celular, escolha entre alto-falante, ouvido e fone, e o mic segue funcionando com o app em segundo plano.
 - Atalhos: `M` microfone, `D` som da call, `V` câmera, `S` transmitir tela, `C` chat.
 
 | | |
@@ -151,7 +151,7 @@ Pra testar o TURN no PC, copie `.dev.vars.example` pra `.dev.vars` e preencha. P
 - [x] Apps pra Windows, Linux, Android e iOS (v0.1.0)
 - [x] Áudio só do jogo no app desktop, Windows e Linux (v0.2.0)
 - [x] Seletor de janelas com miniaturas e ajuste fino do encoder (v0.3.0)
-- [ ] Página inicial com os downloads e abertura animada nos apps
+- [x] Página inicial com os downloads e abertura animada nos apps (v0.4.0)
 - [ ] TURN, se alguém não conseguir conectar direto
 - [ ] Senha ou sala de espera na call
 
