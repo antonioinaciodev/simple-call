@@ -760,6 +760,86 @@ select.input {
   font-size: 12px;
 }
 
+/* ---------- seletor de tela do app desktop ---------- */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: var(--overlay);
+}
+
+.modal {
+  width: min(440px, 100%);
+  max-height: min(560px, calc(100vh - 32px));
+  display: flex;
+  flex-direction: column;
+  border-radius: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+
+.modal > p {
+  margin: 0;
+  padding: 16px;
+}
+
+.panel-head-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.source-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px;
+  overflow-y: auto;
+}
+
+.source-list h3 {
+  margin: 8px 6px 6px;
+}
+
+.source-list h3:first-child {
+  margin-top: 0;
+}
+
+.source {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.source:hover,
+.source:focus-visible {
+  background: var(--surface-2);
+  border-color: var(--border);
+}
+
+.source svg {
+  flex: none;
+  color: var(--muted);
+}
+
+.source span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ---------- painel lateral (chat e ajustes) ---------- */
 
 .panel {

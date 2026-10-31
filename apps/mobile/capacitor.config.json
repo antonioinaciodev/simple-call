@@ -1,0 +1,22 @@
+{
+  "appId": "dev.antonioinacio.simplecall",
+  "appName": "Simple Call",
+  "webDir": "www",
+  "server": {
+    "url": "https://simplecall.antonioinaciodev.workers.dev",
+    "errorPath": "index.html"
+  },
+  "backgroundColor": "#0a0a0a",
+  "android": {
+    "allowMixedContent": false
+  },
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#0a0a0a"
+  },
+  "plugins": {
+    "SystemBars": {
+      "style": "DARK"
+    }
+  }
+}

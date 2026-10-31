@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'r
 import type { SetPrefs } from '../App';
 import { useSpeaking } from '../hooks/useSpeaking';
 import { getIceServers } from '../lib/api';
+import { withCallAudio } from '../lib/native';
 import { Mesh, type ChatMessage } from '../lib/mesh';
 import { audioSettings, cameraConstraints, micConstraints, type Prefs } from '../lib/prefs';
 import { screenPreset } from '../lib/screen';
@@ -69,6 +70,16 @@ export function Call({ code, prefs, setPrefs, onLeave }: Props) {
   }, []);
 
   useEffect(() => setSoundOutput(prefs.speakerId), [prefs.speakerId]);
+
+  // No app do celular: mantém a call viva com o app em segundo plano e usa a saída de áudio escolhida.
+  useEffect(() => {
+    void withCallAudio(async (plugin) => {
+      await plugin.startCall();
+      const output = prefsRef.current.mobileOutput;
+      if (output) await plugin.setOutput({ id: output });
+    }).catch(() => {});
+    return () => void withCallAudio((plugin) => plugin.endCall()).catch(() => {});
+  }, []);
 
   const flash = useCallback((msg: string) => {
     setToast(msg);

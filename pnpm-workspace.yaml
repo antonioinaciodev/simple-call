@@ -1,2 +1,8 @@
 packages:
   - apps/*
+
+# O binário do Electron (~100 MB) só é baixado quando você roda o app desktop
+# (pnpm --filter @simple-call/desktop start), não em todo install nem no deploy da Cloudflare.
+ignoredBuiltDependencies:
+  - electron
+  - electron-winstaller
