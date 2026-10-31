@@ -1,0 +1,27 @@
+{
+  "name": "@simple-call/desktop",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Simple Call para Windows e Linux (Electron).",
+  "author": {
+    "name": "Antonio Inácio",
+    "email": "165093179+antonioinaciodev@users.noreply.github.com"
+  },
+  "homepage": "https://github.com/antonioinaciodev/simple-call",
+  "license": "MIT",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "electron:install": "node node_modules/electron/install.js",
+    "start": "pnpm build && pnpm electron:install && electron .",
+    "dist": "pnpm build && electron-builder --publish never",
+    "start:local": "pnpm build && pnpm electron:install && cross-env SIMPLECALL_URL=http://localhost:5173 electron ."
+  },
+  "devDependencies": {
+    "cross-env": "^10.1.0",
+    "electron": "^45.2.1",
+    "electron-builder": "^26.18.0",
+    "typescript": "^7.0.2"
+  }
+}

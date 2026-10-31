@@ -1,4 +1,5 @@
 import type { AudioSettings, VideoCodec } from './mesh';
+import type { AudioOutputId } from './native';
 import { audioPreset, type AudioPresetId } from './presets';
 import type { ScreenPresetId } from './screen';
 
@@ -22,6 +23,8 @@ export interface Prefs {
   micId: string;
   camId: string;
   speakerId: string;
+  // No app do celular: alto-falante, ouvido ou fone; vazio = o que o sistema escolher.
+  mobileOutput: AudioOutputId | '';
 }
 
 export const DEFAULT_PREFS: Prefs = {
@@ -42,6 +45,7 @@ export const DEFAULT_PREFS: Prefs = {
   micId: '',
   camId: '',
   speakerId: '',
+  mobileOutput: '',
 };
 
 const KEY = 'simplecall:prefs';

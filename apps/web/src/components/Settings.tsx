@@ -1,6 +1,7 @@
 import { X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { SetPrefs } from '../App';
+import { mobilePlatform, withCallAudio, type AudioOutput, type AudioOutputId } from '../lib/native';
 import type { Prefs } from '../lib/prefs';
 import { AUDIO_PRESETS, CODECS } from '../lib/presets';
 import type { MediaActions } from './Call';
@@ -53,6 +54,54 @@ function DeviceSelect({
   );
 }
 
+// Saída do som no app do celular: alto-falante, ouvido (como numa ligação) ou fone.
+function MobileOutputSelect({ value, onChange }: { value: AudioOutputId | ''; onChange: (id: AudioOutputId) => void }) {
+  const [outputs, setOutputs] = useState<AudioOutput[]>([]);
+  const [current, setCurrent] = useState<AudioOutputId | null>(null);
+  useEffect(() => {
+    let alive = true;
+    let remove: (() => Promise<void>) | undefined;
+    void withCallAudio(async (plugin) => {
+      const load = () =>
+        plugin.getOutputs().then((r) => {
+          if (!alive) return;
+          setOutputs(r.outputs);
+          setCurrent(r.current);
+        });
+      await load();
+      const handle = await plugin.addListener('outputsChanged', () => void load().catch(() => {}));
+      if (alive) remove = () => handle.remove();
+      else await handle.remove();
+    }).catch(() => {});
+    return () => {
+      alive = false;
+      void remove?.();
+    };
+  }, []);
+  if (outputs.length < 2) return null;
+  const selected = outputs.some((o) => o.id === value) ? value : (current ?? '');
+  return (
+    <label className="field">
+      <span>Saída de áudio</span>
+      <select
+        className="input"
+        value={selected}
+        onChange={(e) => {
+          const id = e.target.value as AudioOutputId;
+          setCurrent(id);
+          onChange(id);
+        }}
+      >
+        {outputs.map((o) => (
+          <option key={o.id} value={o.id}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 function Toggle({ label, hint, checked, onChange }: { label: string; hint: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
     <label className="check">
@@ -88,7 +137,17 @@ export function Settings({ prefs, setPrefs, actions, onClose }: Props) {
         <section>
           <h3>Dispositivos</h3>
           <DeviceSelect devices={devices} kind="audioinput" label="Microfone" value={prefs.micId} onChange={(id) => update({ micId: id }, 'mic')} />
-          <DeviceSelect devices={devices} kind="audiooutput" label="Saída de áudio" value={prefs.speakerId} onChange={(id) => setPrefs({ speakerId: id })} />
+          {mobilePlatform ? (
+            <MobileOutputSelect
+              value={prefs.mobileOutput}
+              onChange={(id) => {
+                setPrefs({ mobileOutput: id });
+                void withCallAudio((p) => p.setOutput({ id })).catch(() => {});
+              }}
+            />
+          ) : (
+            <DeviceSelect devices={devices} kind="audiooutput" label="Saída de áudio" value={prefs.speakerId} onChange={(id) => setPrefs({ speakerId: id })} />
+          )}
           <DeviceSelect devices={devices} kind="videoinput" label="Câmera" value={prefs.camId} onChange={(id) => update({ camId: id }, 'camera')} />
         </section>
 

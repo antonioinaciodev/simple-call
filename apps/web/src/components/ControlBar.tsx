@@ -15,10 +15,12 @@ import {
 import { useEffect, useState } from 'react';
 import type { SetPrefs } from '../App';
 import type { Mesh } from '../lib/mesh';
+import { desktop } from '../lib/native';
 import type { Prefs } from '../lib/prefs';
 import type { MediaActions, Panel } from './Call';
 import { CopyLinkButton } from './CopyLinkButton';
 import { ShareMenu } from './ShareMenu';
+import { SourcePicker } from './SourcePicker';
 
 interface Props {
   mesh: Mesh;
@@ -34,11 +36,16 @@ interface Props {
   toast: string;
 }
 
+// Celular (navegador ou app) não tem como transmitir a tela: o botão nem aparece.
+const canShareScreen = typeof navigator.mediaDevices?.getDisplayMedia === 'function';
+
 const isTyping = (el: EventTarget | null) =>
   el instanceof HTMLElement && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
 
 export function ControlBar({ mesh, actions, prefs, setPrefs, panel, setPanel, unread, showStats, toggleStats, onLeave, toast }: Props) {
   const [shareOpen, setShareOpen] = useState(false);
+  // No app desktop a tela ou janela é escolhida no seletor do próprio app.
+  const [pickerOpen, setPickerOpen] = useState(false);
   const { toggleMic, toggleDeafen, toggleCam, share, stopShare } = actions;
   const isMicrophoneEnabled = !!mesh.mic;
   const isDeafened = mesh.deafened;
@@ -55,7 +62,7 @@ export function ControlBar({ mesh, actions, prefs, setPrefs, panel, setPanel, un
       if (k === 'm') toggleMic();
       else if (k === 'd') toggleDeafen();
       else if (k === 'v') toggleCam();
-      else if (k === 's') isScreenShareEnabled ? stopShare() : setShareOpen((o) => !o);
+      else if (k === 's' && canShareScreen) isScreenShareEnabled ? stopShare() : setShareOpen((o) => !o);
       else if (k === 'c') togglePanel('chat');
       else if (k === 'escape') setShareOpen(false);
     };
@@ -94,27 +101,30 @@ export function ControlBar({ mesh, actions, prefs, setPrefs, panel, setPanel, un
         >
           {isCameraEnabled ? <Video size={20} /> : <VideoOff size={20} />}
         </button>
-        <div className="popover-anchor">
-          <button
-            className={`icon-btn ${isScreenShareEnabled ? 'active' : ''}`}
-            onClick={() => (isScreenShareEnabled ? stopShare() : setShareOpen((o) => !o))}
-            title={isScreenShareEnabled ? 'Parar transmissão (S)' : 'Transmitir tela (S)'}
-            aria-pressed={isScreenShareEnabled}
-          >
-            {isScreenShareEnabled ? <MonitorOff size={20} /> : <MonitorUp size={20} />}
-          </button>
-          {shareOpen && !isScreenShareEnabled && (
-            <ShareMenu
-              prefs={prefs}
-              setPrefs={setPrefs}
-              onClose={() => setShareOpen(false)}
-              onStart={() => {
-                setShareOpen(false);
-                void share();
-              }}
-            />
-          )}
-        </div>
+        {canShareScreen && (
+          <div className="popover-anchor">
+            <button
+              className={`icon-btn ${isScreenShareEnabled ? 'active' : ''}`}
+              onClick={() => (isScreenShareEnabled ? stopShare() : setShareOpen((o) => !o))}
+              title={isScreenShareEnabled ? 'Parar transmissão (S)' : 'Transmitir tela (S)'}
+              aria-pressed={isScreenShareEnabled}
+            >
+              {isScreenShareEnabled ? <MonitorOff size={20} /> : <MonitorUp size={20} />}
+            </button>
+            {shareOpen && !isScreenShareEnabled && (
+              <ShareMenu
+                prefs={prefs}
+                setPrefs={setPrefs}
+                onClose={() => setShareOpen(false)}
+                onStart={() => {
+                  setShareOpen(false);
+                  if (desktop) setPickerOpen(true);
+                  else void share();
+                }}
+              />
+            )}
+          </div>
+        )}
         <button className="icon-btn leave" onClick={onLeave} title="Sair da call">
           <PhoneOff size={20} />
         </button>
@@ -150,6 +160,16 @@ export function ControlBar({ mesh, actions, prefs, setPrefs, panel, setPanel, un
       </div>
 
       {toast && <div className="toast">{toast}</div>}
+      {pickerOpen && desktop && (
+        <SourcePicker
+          onClose={() => setPickerOpen(false)}
+          onPick={async (source) => {
+            setPickerOpen(false);
+            await desktop!.selectSource(source.id, source.name, prefs.shareAudio && desktop!.platform === 'win32');
+            void share();
+          }}
+        />
+      )}
     </footer>
   );
 }

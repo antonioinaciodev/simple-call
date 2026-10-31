@@ -79,4 +79,5 @@ Cada pessoa tem um `RTCPeerConnection` com cada uma das outras (malha completa).
 | `src/lib/stats.ts` | Lê o `getStats()` de cada conexão uma vez por segundo pro painel de estatísticas |
 | `src/hooks/useSpeaking.ts` | Quem está falando: dos outros, usa o volume que o navegador já calcula; o seu vem de um analisador no próprio mic |
 | `src/lib/prefs.ts` | Preferências salvas no `localStorage` (nome, dispositivos, qualidade, tema) |
+| `src/lib/native.ts` | Pontes pros apps: `window.simplecallDesktop` (seletor de tela do app desktop) e o plugin `CallAudio` do celular. Fora dos apps não faz nada. Detalhes em [APPS.md](APPS.md) |
 | `src/App.tsx` | Rotas simples: `/` é a tela inicial e `/abc-defg-hij` é a call. A parte da call só é baixada quando alguém abre uma |

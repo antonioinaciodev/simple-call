@@ -4,7 +4,7 @@ Chamadas leves pra jogar e transmitir com os amigos. Estilo Meet: você cria a c
 
 Áudio, vídeo e chat vão **direto entre os navegadores** (WebRTC P2P). A hospedagem fica toda no plano grátis da Cloudflare.
 
-**[Abrir o app](https://simplecall.antonioinaciodev.workers.dev)** · [Como funciona](#como-funciona) · [Rodar no PC](#rodando-no-seu-pc) · [Colocar no ar](docs/DEPLOY.md) · [Arquitetura](docs/ARQUITETURA.md)
+**[Abrir o app](https://simplecall.antonioinaciodev.workers.dev)** · [Baixar pra Windows, Linux e Android](https://github.com/antonioinaciodev/simple-call/releases/latest) · [Como funciona](#como-funciona) · [Rodar no PC](#rodando-no-seu-pc) · [Colocar no ar](docs/DEPLOY.md) · [Arquitetura](docs/ARQUITETURA.md)
 
 [![CI](https://github.com/antonioinaciodev/simple-call/actions/workflows/ci.yml/badge.svg)](https://github.com/antonioinaciodev/simple-call/actions/workflows/ci.yml)
 
@@ -24,6 +24,7 @@ Chamadas leves pra jogar e transmitir com os amigos. Estilo Meet: você cria a c
 - **Estatísticas da conexão:** ping, rota (direta ou via TURN), resolução, FPS, bitrate e perda de pacotes.
 - Contorno em quem está falando, tela cheia na transmissão (botão ou dois cliques) e tema escuro ou claro, só em escala de cinza.
 - Funciona no celular. Os ajustes ficam salvos no navegador.
+- **Apps pra Windows, Linux, Android e iOS** ([detalhes](docs/APPS.md)): no PC, seletor próprio de tela ou janela e, no Windows, áudio do PC junto com qualquer janela; no celular, escolha entre alto-falante, ouvido e fone, e o mic segue funcionando com o app em segundo plano.
 - Atalhos: `M` microfone, `D` som da call, `V` câmera, `S` transmitir tela, `C` chat.
 
 | | |
@@ -55,6 +56,8 @@ Os detalhes (sinalização, negociação, ajustes de qualidade) estão em [docs/
 ```
 simple-call/
 ├── apps/
+│   ├── desktop/          App de Windows e Linux (Electron) que abre o site
+│   ├── mobile/           Apps de Android e iOS (Capacitor) que abrem o site
 │   ├── web/              Front: React + TypeScript + Vite
 │   │   └── src/
 │   │       ├── components/   Telas e partes da interface (Home, PreJoin, Call, Chat...)
@@ -65,9 +68,9 @@ simple-call/
 │           ├── index.ts      Rotas /api/*
 │           ├── room.ts       Durable Object de cada call (WebSocket de sinalização)
 │           └── rooms.ts      Código da call e validação do nome
-├── docs/                 Deploy, arquitetura e screenshots
+├── docs/                 Deploy, apps, arquitetura e screenshots
 ├── wrangler.jsonc        Configuração da Cloudflare (fica na raiz pro deploy automático achar)
-└── .github/workflows/    CI: typecheck e build em cada PR
+└── .github/workflows/    CI (typecheck e build em cada PR) e geração dos apps nas Releases
 ```
 
 É um monorepo com [pnpm workspaces](https://pnpm.io/workspaces): cada pasta em `apps/` é um pacote com o próprio `package.json`.
@@ -92,7 +95,7 @@ O `dev` sobe o Worker local (porta 3001) e o front em http://localhost:5173. Cli
 | `npx pnpm@10 build` | Gera o site em `apps/web/dist` |
 | `npx pnpm@10 run deploy` | Publica na Cloudflare (precisa do `build` antes) |
 
-Pra testar o TURN no PC, copie `.dev.vars.example` pra `.dev.vars` e preencha.
+Pra testar o TURN no PC, copie `.dev.vars.example` pra `.dev.vars` e preencha. Pra rodar e gerar os apps, veja [docs/APPS.md](docs/APPS.md).
 
 ### Fluxo de trabalho
 
@@ -103,7 +106,8 @@ Pra testar o TURN no PC, copie `.dev.vars.example` pra `.dev.vars` e preencha.
 ## Limitações conhecidas
 
 - **Até 6 pessoas por call.** Como é P2P, cada pessoa a mais é mais uma conexão pra cada um.
-- **Áudio do jogo no Linux:** o navegador só consegue mandar o áudio de uma aba do Chrome junto com a tela, não o áudio do sistema ou de um jogo. No Windows funciona ao escolher "Tela inteira".
+- **Áudio do jogo no Linux:** o navegador só consegue mandar o áudio de uma aba do Chrome junto com a tela, não o áudio do sistema ou de um jogo. No Windows funciona ao escolher "Tela inteira" (ou qualquer janela, no app desktop).
+- **Eco no áudio do sistema:** junto com o áudio do PC vão as vozes da call, então os amigos podem ouvir a própria voz de volta. A captura só do jogo vem numa próxima versão do app desktop.
 - **Push-to-talk com o jogo em foco** não dá pra fazer no navegador, porque ele só recebe teclas com a aba em foco.
 - **Sem TURN por enquanto:** quem estiver numa rede que bloqueia conexão direta não vai conectar. Até agora ninguém precisou.
 
@@ -113,10 +117,13 @@ Pra testar o TURN no PC, copie `.dev.vars.example` pra `.dev.vars` e preencha.
 - [x] Ajustes de áudio, codec e painel de estatísticas
 - [x] Troca do servidor de mídia (LiveKit) por P2P direto entre os navegadores
 - [x] Tudo hospedado na Cloudflare (Worker + Durable Objects)
-- [ ] Volume por pessoa, som de entrada e saída, push-to-talk com a aba em foco
+- [x] Volume por pessoa, som de entrada e saída
+- [x] Apps pra Windows, Linux, Android e iOS
+- [ ] Áudio só do jogo no app desktop (Windows e Linux)
+- [ ] Seletor de janelas com miniaturas e ajuste fino do encoder
+- [ ] Página inicial com os downloads
 - [ ] TURN, se alguém não conseguir conectar direto
 - [ ] Senha ou sala de espera na call
-- [ ] Talvez, bem mais pra frente: app desktop (push-to-talk global, áudio só do jogo)
 
 ## Licença
 

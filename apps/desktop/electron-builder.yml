@@ -1,0 +1,43 @@
+# Instaladores do app desktop. Os nomes não têm versão pra que o link
+# github.com/.../releases/latest/download/<nome> sempre baixe a última.
+appId: dev.antonioinacio.simplecall
+productName: Simple Call
+copyright: Copyright © 2026 Antonio Inácio
+directories:
+  output: release
+  buildResources: build
+files:
+  - dist/**/*
+  - offline.html
+  - package.json
+# Não tem dependência nativa pra recompilar.
+npmRebuild: false
+nodeGypRebuild: false
+asar: true
+electronLanguages: [pt-BR, en-US]
+
+win:
+  target: nsis
+  icon: build/icon.png
+nsis:
+  # Instala só pro usuário, sem pedir administrador, e abre o app no fim.
+  oneClick: true
+  perMachine: false
+  runAfterFinish: true
+  shortcutName: Simple Call
+  artifactName: SimpleCall-Windows.${ext}
+
+linux:
+  target: [AppImage, deb]
+  category: Network
+  icon: build/icon.png
+  executableName: simplecall
+  synopsis: Chamadas pra jogar e transmitir com os amigos
+  desktop:
+    entry:
+      Name: Simple Call
+      StartupWMClass: Simple Call
+appImage:
+  artifactName: SimpleCall-Linux.${ext}
+deb:
+  artifactName: SimpleCall-Linux.${ext}
