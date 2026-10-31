@@ -20,7 +20,8 @@ export const AUDIO_PRESETS: AudioQuality[] = [
 export const audioPreset = (id: AudioPresetId) => AUDIO_PRESETS.find((p) => p.id === id) ?? AUDIO_PRESETS[1];
 
 export const CODECS: { id: VideoCodec; label: string; hint: string }[] = [
-  { id: 'h264', label: 'H.264', hint: 'Usa a GPU na maioria dos PCs. Recomendado.' },
+  { id: 'auto', label: 'Automático', hint: 'O melhor que a placa de vídeo do seu PC e a de quem assiste aguentam. Recomendado.' },
+  { id: 'h264', label: 'H.264', hint: 'Usa a GPU na maioria dos PCs.' },
   { id: 'vp9', label: 'VP9', hint: 'Comprime melhor, pesa mais na CPU.' },
   { id: 'av1', label: 'AV1', hint: 'Melhor qualidade por Mbps. Ideal com GPU recente.' },
   { id: 'vp8', label: 'VP8', hint: 'Compatível com tudo, menos eficiente.' },

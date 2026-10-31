@@ -105,7 +105,7 @@ export function Call({ code, prefs, setPrefs, onLeave }: Props) {
           room: code,
           name: p.name.trim(),
           iceServers,
-          codec: p.videoCodec,
+          codec: p.screenCodec,
           audio: audioSettings(p),
           onChange: rerender,
           onChat: (msg) => setMessages((prev) => [...prev, msg].slice(-MAX_MESSAGES)),
@@ -193,7 +193,7 @@ export function Call({ code, prefs, setPrefs, onLeave }: Props) {
       applyPrefs: (next, recapture) =>
         run(async () => {
           mesh.setAudio(audioSettings(next));
-          mesh.setCodec(next.videoCodec);
+          mesh.setCodec(next.screenCodec);
           if (recapture === 'mic' && mesh.mic) mesh.setMic(await capture('audio', micConstraints(next)));
           if (recapture === 'camera' && mesh.camera) mesh.setCamera(await capture('video', cameraConstraints(next)));
         }, 'Não deu pra aplicar o ajuste.'),

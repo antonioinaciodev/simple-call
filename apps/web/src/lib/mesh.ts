@@ -1,10 +1,12 @@
 import type { ScreenPreset } from './screen';
+import { GROW_AFTER_MS, hardwareCodecs, pickCodec, preferCodec, preferRed, PRIORITY, scaleForBitrate, tuneSdp, type Encoding, type HardwareCodecs } from './tuning';
 
 // Malha P2P: cada pessoa da call tem uma conexão WebRTC direta com cada uma das outras.
 // O servidor só apresenta as pessoas e repassa as mensagens de conexão; áudio, vídeo e chat
 // vão direto entre os navegadores (ou pelo TURN, quando a conexão direta não rola).
 
-export type VideoCodec = 'h264' | 'vp9' | 'av1' | 'vp8';
+// auto: o melhor que a placa de vídeo dos dois lados aguenta (lib/tuning.ts).
+export type VideoCodec = 'auto' | 'h264' | 'vp9' | 'av1' | 'vp8';
 export type MediaKind = 'mic' | 'camera' | 'screen' | 'screenAudio';
 
 export interface ChatMessage {
@@ -41,6 +43,12 @@ export interface Peer {
   restartDelay: number;
   restartTimer?: ReturnType<typeof setTimeout>;
   lastRestart: number;
+  // Codecs que a placa de vídeo dela decodifica sem pesar (vem no estado dela).
+  hwDecode?: string[];
+  // Quanto a transmissão pra ela está encolhida pra caber na banda, e desde quando sobra banda.
+  screenScale: number;
+  growSince: number;
+  screenSince: number;
 }
 
 // Mudanças nas outras pessoas que viram som na call.
@@ -56,6 +64,7 @@ export interface RemoteMedia {
 export interface AudioSettings {
   maxBitrate: number;
   dtx: boolean;
+  stereo: boolean;
 }
 
 interface Options {
@@ -82,7 +91,7 @@ type ServerMsg =
 type SignalData = { description: RTCSessionDescriptionInit } | { candidate: RTCIceCandidateInit } | { reset: true } | { restart: true };
 
 type PeerMsg =
-  | { type: 'state'; micOn: boolean; deafened?: boolean; kinds: Record<string, MediaKind> }
+  | { type: 'state'; micOn: boolean; deafened?: boolean; kinds: Record<string, MediaKind>; hwDecode?: string[] }
   | { type: 'chat'; id: string; text: string; timestamp: number };
 
 const CAMERA_ENCODING: RTCRtpEncodingParameters = { maxBitrate: 1_200_000, maxFramerate: 30 };
@@ -99,6 +108,10 @@ const PING_MS = 10_000;
 const DEAD_MS = 25_000;
 const RETRY_MS = 1_000;
 const RETRY_MAX_MS = 8_000;
+// De quanto em quanto tempo confere se a transmissão cabe na banda de cada pessoa.
+const ADAPT_MS = 2_000;
+// A banda começa em 2,5 Mbps e leva alguns segundos pra subir: não encolhe nada nesse começo.
+const ADAPT_GRACE_MS = 8_000;
 
 export class Mesh {
   readonly peers = new Map<string, Peer>();
@@ -122,6 +135,8 @@ export class Mesh {
   private retryDelay = RETRY_MS;
   private retry?: ReturnType<typeof setTimeout>;
   private ping: ReturnType<typeof setInterval>;
+  private adapt: ReturnType<typeof setInterval>;
+  private hw: HardwareCodecs | null = null;
 
   constructor(private opts: Options) {
     this.connect();
@@ -133,6 +148,12 @@ export class Mesh {
       else this.ws.send('{"type":"ping"}');
     }, PING_MS);
     window.addEventListener('online', this.onOnline);
+    this.adapt = setInterval(() => void this.adaptScreen(), ADAPT_MS);
+    // Conta pras outras pessoas o que a placa de vídeo daqui decodifica (pro codec automático).
+    void hardwareCodecs().then((hw) => {
+      this.hw = hw;
+      this.broadcastState();
+    });
   }
 
   private connect() {
@@ -185,6 +206,7 @@ export class Mesh {
   leave() {
     this.closed = true;
     clearInterval(this.ping);
+    clearInterval(this.adapt);
     clearTimeout(this.retry);
     window.removeEventListener('online', this.onOnline);
     // 1000: saí de propósito, o servidor avisa todo mundo na hora em vez de esperar eu voltar.
@@ -240,7 +262,7 @@ export class Mesh {
       surfaceSwitching: 'include',
     });
     const video = stream.getVideoTracks()[0];
-    // "motion" avisa o encoder que é jogo; "detail" que é texto e precisa de nitidez.
+    // "motion" avisa o encoder que é jogo; "text" que é texto e precisa de nitidez.
     video.contentHint = preset.contentHint;
     video.addEventListener('ended', () => this.stopScreen());
     let audioError: string | undefined;
@@ -347,7 +369,7 @@ export class Mesh {
   private sendState(peer: Peer) {
     const kinds: Record<string, MediaKind> = {};
     for (const [kind, tx] of Object.entries(peer.sending)) if (tx.mid) kinds[tx.mid] = kind as MediaKind;
-    this.sendPeer(peer, { type: 'state', micOn: !!this.mic, deafened: this.deafened, kinds });
+    this.sendPeer(peer, { type: 'state', micOn: !!this.mic, deafened: this.deafened, kinds, hwDecode: this.hw?.decode });
   }
 
   private onServer(msg: ServerMsg) {
@@ -429,7 +451,7 @@ export class Mesh {
 
   private addPeer(id: string, name: string, polite: boolean, retry = STUCK_MS) {
     const pc = new RTCPeerConnection({ iceServers: this.opts.iceServers, bundlePolicy: 'max-bundle' });
-    const peer: Peer = { id, name, pc, dc: null, polite, ignoreOffer: false, queue: Promise.resolve(), sending: {}, remoteKinds: {}, micOn: true, deafened: false, stateKnown: false, wasConnected: false, restartDelay: RESTART_MS, lastRestart: 0 };
+    const peer: Peer = { id, name, pc, dc: null, polite, ignoreOffer: false, queue: Promise.resolve(), sending: {}, remoteKinds: {}, micOn: true, deafened: false, stateKnown: false, wasConnected: false, restartDelay: RESTART_MS, lastRestart: 0, screenScale: 1, growSince: 0, screenSince: 0 };
     this.peers.set(id, peer);
 
     // Canal de dados (estado e chat): só quem já estava na call cria; quem chega recebe pronto.
@@ -534,6 +556,7 @@ export class Mesh {
       peer.micOn = msg.micOn;
       peer.deafened = deafened;
       peer.remoteKinds = msg.kinds;
+      if (Array.isArray(msg.hwDecode)) peer.hwDecode = msg.hwDecode.filter((c) => typeof c === 'string');
       this.opts.onChange();
     } else if (msg.type === 'chat' && typeof msg.text === 'string') {
       this.opts.onChat({
@@ -575,7 +598,7 @@ export class Mesh {
       if (peer.ignoreOffer) return;
       // Resposta atrasada de uma oferta que eu já desfiz: não vale mais.
       if (description.type === 'answer' && pc.signalingState !== 'have-local-offer') return;
-      await pc.setRemoteDescription({ type: description.type, sdp: tuneSdp(description.sdp ?? '', this.opts.audio.dtx) });
+      await pc.setRemoteDescription({ type: description.type, sdp: tuneSdp(description.sdp ?? '', (mid) => this.sendingKind(peer, mid), this.opts.audio) });
       if (description.type === 'offer') {
         await pc.setLocalDescription();
         if (pc.localDescription) this.sendServer(peer.id, { description: pc.localDescription.toJSON() });
@@ -614,17 +637,65 @@ export class Mesh {
       return;
     }
 
+    if (kind === 'screen' && tx?.sender.track !== track) {
+      // Transmissão nova: começa na resolução cheia.
+      peer.screenScale = 1;
+      peer.growSince = 0;
+      peer.screenSince = Date.now();
+    }
     if (usable) {
       void tx.sender.replaceTrack(track);
       tx.direction = 'sendonly';
-      if (kind === 'screen') preferCodec(tx, this.opts.codec);
+      if (kind === 'screen') preferCodec(tx, this.screenCodec(peer));
     } else {
       const sendEncodings = kind === 'camera' ? [CAMERA_ENCODING] : kind === 'screen' && this.screenPreset ? [screenEncoding(this.screenPreset)] : undefined;
       const created = peer.pc.addTransceiver(track, { direction: 'sendonly', sendEncodings });
-      if (kind === 'screen') preferCodec(created, this.opts.codec);
+      if (kind === 'screen') preferCodec(created, this.screenCodec(peer));
+      if (kind === 'mic') preferRed(created);
       peer.sending[kind] = created;
     }
     void this.tune(peer, kind);
+  }
+
+  private screenCodec(peer: Peer) {
+    return pickCodec(this.opts.codec, this.screenPreset?.contentHint === 'motion', this.hw, peer.hwDecode);
+  }
+
+  // O que eu envio pra essa pessoa numa seção da descrição (pelo mid).
+  private sendingKind(peer: Peer, mid: string | undefined) {
+    if (!mid) return undefined;
+    return (Object.keys(peer.sending) as MediaKind[]).find((k) => peer.sending[k]?.mid === mid);
+  }
+
+  // Jogo: a cada ADAPT_MS confere a banda que a conexão dá pra transmissão de cada pessoa e
+  // encolhe a imagem quando não cabe, pra não perder quadros (lib/tuning.ts).
+  private async adaptScreen() {
+    const preset = this.screenPreset;
+    const video = this.screen?.getVideoTracks()[0];
+    if (!preset || preset.contentHint !== 'motion' || !video) return;
+    const { width = preset.width, height = preset.height } = video.getSettings();
+    const now = Date.now();
+    for (const peer of this.peers.values()) {
+      const sender = peer.sending.screen?.sender;
+      if (sender?.track !== video || now - peer.screenSince < ADAPT_GRACE_MS) continue;
+      let target = 0;
+      (await sender.getStats().catch(() => null))?.forEach((s) => {
+        if (s.type === 'outbound-rtp' && typeof s.targetBitrate === 'number') target = s.targetBitrate;
+      });
+      const want = scaleForBitrate(target, width * height, preset.fps, peer.screenScale);
+      if (want > peer.screenScale) peer.growSince = 0;
+      else if (want < peer.screenScale) {
+        // Sobra banda: só cresce depois de um tempo seguido assim.
+        peer.growSince ||= now;
+        if (now - peer.growSince < GROW_AFTER_MS) continue;
+        peer.growSince = 0;
+      } else {
+        peer.growSince = 0;
+        continue;
+      }
+      peer.screenScale = want;
+      void this.tune(peer, 'screen');
+    }
   }
 
   private async tune(peer: Peer, kind: MediaKind) {
@@ -633,11 +704,13 @@ export class Mesh {
     const params = sender.getParameters();
     const enc = params.encodings?.[0];
     if (!enc) return;
+    const e = enc as Encoding;
+    e.priority = e.networkPriority = PRIORITY[kind];
     if (kind === 'mic') enc.maxBitrate = this.opts.audio.maxBitrate;
     else if (kind === 'screenAudio') enc.maxBitrate = SCREEN_AUDIO_BITRATE;
     else if (kind === 'camera') Object.assign(enc, CAMERA_ENCODING);
     else if (this.screenPreset) {
-      Object.assign(enc, screenEncoding(this.screenPreset));
+      Object.assign(enc, screenEncoding(this.screenPreset), { scaleResolutionDownBy: peer.screenScale });
       // Jogo: sem banda, cai a nitidez e não o FPS. Texto: o contrário.
       (params as RTCRtpSendParameters & { degradationPreference?: string }).degradationPreference =
         this.screenPreset.contentHint === 'motion' ? 'maintain-framerate' : 'maintain-resolution';
@@ -647,57 +720,3 @@ export class Mesh {
 }
 
 const screenEncoding = (p: ScreenPreset): RTCRtpEncodingParameters => ({ maxBitrate: p.maxBitrate, maxFramerate: p.fps });
-
-// Coloca o codec escolhido na frente da lista. H.264 costuma ter encoder de hardware (placa de vídeo),
-// o que pesa menos no PC de quem transmite enquanto joga.
-function preferCodec(tx: RTCRtpTransceiver, codec: VideoCodec) {
-  const caps = RTCRtpReceiver.getCapabilities('video')?.codecs;
-  if (!caps) return;
-  const mime = `video/${codec}`;
-  const first = caps.filter((c) => c.mimeType.toLowerCase() === mime);
-  if (!first.length) return;
-  try {
-    tx.setCodecPreferences([...first, ...caps.filter((c) => c.mimeType.toLowerCase() !== mime)]);
-  } catch {
-    // Navegador sem suporte: fica com a ordem padrão.
-  }
-}
-
-// O Chrome começa todo vídeo a ~300 kbps e sobe devagar: a transmissão ficaria uns 20 segundos
-// borrada até chegar no bitrate certo. Esse parâmetro (não oficial, mas suportado há anos) faz
-// ele começar mais alto; se a rede não aguentar, o controle de banda desce normalmente.
-const START_KBPS = 2500;
-
-// Ajusta a descrição recebida, que é o que define como EU envio: início rápido do vídeo,
-// Opus em estéreo (pro áudio do jogo) e DTX (não enviar nada no silêncio) se ligado.
-export function tuneSdp(sdp: string, dtx: boolean) {
-  const lines = sdp.split('\r\n');
-  const video = new Set<string>();
-  const opus = new Set<string>();
-  for (const line of lines) {
-    const m = /^a=rtpmap:(\d+) ([\w-]+)\//.exec(line);
-    if (!m) continue;
-    if (/^(H264|VP8|VP9|AV1)$/i.test(m[2])) video.add(m[1]);
-    if (/^opus$/i.test(m[2])) opus.add(m[1]);
-  }
-  const withFmtp = new Set<string>();
-  const extra = (pt: string) => {
-    if (video.has(pt)) return [`x-google-start-bitrate=${START_KBPS}`];
-    if (opus.has(pt)) return ['stereo=1', 'sprop-stereo=1', `usedtx=${dtx ? 1 : 0}`];
-    return [];
-  };
-  const out = lines.map((line) => {
-    const m = /^a=fmtp:(\d+) (.*)$/.exec(line);
-    if (!m || !(video.has(m[1]) || opus.has(m[1]))) return line;
-    withFmtp.add(m[1]);
-    const params = m[2].split(';').filter((p) => !/^(x-google-start-bitrate|stereo|sprop-stereo|usedtx)=/.test(p));
-    return `a=fmtp:${m[1]} ${[...params, ...extra(m[1])].join(';')}`;
-  });
-  // Codecs sem linha fmtp (o VP8, por exemplo) ganham uma logo depois do rtpmap.
-  return out
-    .flatMap((line) => {
-      const m = /^a=rtpmap:(\d+) /.exec(line);
-      return m && (video.has(m[1]) || opus.has(m[1])) && !withFmtp.has(m[1]) ? [line, `a=fmtp:${m[1]} ${extra(m[1]).join(';')}`] : [line];
-    })
-    .join('\r\n');
-}

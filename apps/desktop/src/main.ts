@@ -158,6 +158,25 @@ function setupIpc() {
         return { id: s.id, name: screens.length === 1 ? 'Tela inteira' : `Tela ${screen + 1}`, kind: 'screen' };
       });
   });
+  // Miniaturas, pedidas depois da lista de nomes: tirar a foto de cada janela leva uns
+  // centésimos de segundo por janela, então o seletor abre na hora e as imagens chegam em seguida.
+  // No Wayland não tem (pedir de novo abriria outra vez a janela de escolha do sistema).
+  ipcMain.handle('sources:thumbnails', async (e) => {
+    if (!isAppUrl(e.sender.getURL()) || process.env.XDG_SESSION_TYPE === 'wayland') return {};
+    const sources = await desktopCapturer.getSources({
+      types: ['screen', 'window'],
+      thumbnailSize: { width: 320, height: 180 },
+      fetchWindowIcons: false,
+    });
+    const out: Record<string, string> = {};
+    for (const s of sources) {
+      if (s.thumbnail.isEmpty()) continue;
+      // JPEG fica umas 5 vezes menor que o PNG padrão, e miniatura não precisa de mais.
+      out[s.id] = `data:image/jpeg;base64,${s.thumbnail.toJPEG(70).toString('base64')}`;
+    }
+    return out;
+  });
+
   ipcMain.handle('sources:select', (e, id: unknown, name: unknown, audio: unknown) => {
     if (!isAppUrl(e.sender.getURL()) || typeof id !== 'string' || typeof name !== 'string') return false;
     const choice = parseChoice(audio, id);

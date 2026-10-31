@@ -14,7 +14,8 @@ export interface Prefs {
   dtx: boolean;
   screenPreset: ScreenPresetId;
   shareAudio: boolean;
-  videoCodec: VideoCodec;
+  // Chamava videoCodec com padrão H.264; o nome mudou pra todo mundo começar no automático.
+  screenCodec: VideoCodec;
   theme: 'dark' | 'light';
   // Sons de entrar, sair e mutar; volume do áudio das transmissões (0 a 1).
   sounds: boolean;
@@ -42,7 +43,7 @@ export const DEFAULT_PREFS: Prefs = {
   dtx: true,
   screenPreset: 'game',
   shareAudio: true,
-  videoCodec: 'h264',
+  screenCodec: 'auto',
   theme: 'dark',
   sounds: true,
   streamVolume: 1,
@@ -94,5 +95,6 @@ export function cameraConstraints(p: Prefs): MediaTrackConstraints {
 }
 
 export function audioSettings(p: Prefs): AudioSettings {
-  return { maxBitrate: audioPreset(p.audioPreset).kbps * 1000, dtx: p.dtx };
+  const q = audioPreset(p.audioPreset);
+  return { maxBitrate: q.kbps * 1000, dtx: p.dtx, stereo: q.stereo };
 }
