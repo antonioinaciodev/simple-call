@@ -41,6 +41,9 @@ O workflow [`.github/workflows/apps.yml`](../.github/workflows/apps.yml) gera tu
    ```
    Ou pelo site: **Releases → Draft a new release → Choose a tag**, digite `v0.4.0`,
    **Create new tag** e **Publish release**.
+   O nome da tag é sempre `v` seguido de três números (`v0.4.0`, nunca `v.0.4.0` nem `0.4.0`); com
+   outro formato o build para logo no começo avisando. Errou? Apague a tag em **Releases → Tags** e
+   crie de novo.
 4. Em uns 10 minutos a Release `v0.4.0` fica com os instaladores, as novidades do CHANGELOG e uma
    tabela de downloads.
 
