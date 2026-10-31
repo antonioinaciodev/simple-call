@@ -48,6 +48,8 @@ jobs:
         run: echo "VERSION=$([[ $GITHUB_REF == refs/tags/v* ]] && echo ${GITHUB_REF_NAME#v} || echo 0.0.0-teste.${{ github.run_number }})" >> $GITHUB_ENV
       - name: Gerar instalador
         working-directory: apps/desktop
+        # bash também no Windows: o PowerShell quebra o argumento -c.extraMetadata.version=...
+        shell: bash
         run: pnpm build && pnpm exec electron-builder ${{ matrix.args }} --publish never -c.extraMetadata.version=${{ env.VERSION }}
       - uses: actions/upload-artifact@v4
         with:
