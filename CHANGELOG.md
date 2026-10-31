@@ -9,7 +9,7 @@ Pra publicar uma versão nova, veja [docs/APPS.md](docs/APPS.md#gerar-uma-releas
 
 ## v0.4.0 (31/10/2026)
 
-**Página inicial com os downloads e abertura animada nos apps**
+**Página inicial com os downloads e abertura animada nos apps** ([#20](https://github.com/antonioinaciodev/simple-call/pull/20))
 
 - No navegador, a página inicial apresenta o Simple Call: começar a call ali mesmo, o que ele tem de diferente e os downloads, com o do seu sistema primeiro.
 - Nos apps (PC e celular), uma abertura curta: o ponto "liga" como uma call conectando, o nome aparece e some. Aparece uma vez cada vez que o app abre e respeita quem desliga animações no sistema.
