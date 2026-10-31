@@ -1,7 +1,7 @@
 {
   "name": "@simple-call/worker",
   "private": true,
-  "version": "0.5.0",
+  "version": "0.5.1",
   "type": "module",
   "scripts": {
     "dev": "node -e \"require('fs').mkdirSync('../web/dist',{recursive:true})\" && wrangler dev --config ../../wrangler.jsonc --port 3001",
