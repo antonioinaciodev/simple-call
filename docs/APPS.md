@@ -1,4 +1,4 @@
-# Apps: Windows, Linux, Android e iOS
+# Apps: Windows e Android
 
 Os apps são uma "casca" em volta do site. A interface é a mesma do navegador e vem direto de
 https://simplecall.antonioinaciodev.workers.dev, então **todo deploy do site já atualiza os apps**,
@@ -7,9 +7,11 @@ da parte nativa (pastas `apps/desktop` e `apps/mobile`).
 
 | | Pasta | Tecnologia | O que o app faz além do site |
 | --- | --- | --- | --- |
-| Windows e Linux | `apps/desktop` | Electron | Seletor próprio de tela ou janela, com miniaturas; manda só o áudio do jogo, sem as vozes da call; a call não engasga com a janela minimizada |
+| Windows | `apps/desktop` | Electron | Seletor próprio de tela ou janela, com miniaturas; manda só o áudio do jogo, sem as vozes da call; a call não engasga com a janela minimizada |
 | Android | `apps/mobile/android` | Capacitor | Escolher alto-falante, ouvido ou fone; mic continua funcionando com o app em segundo plano (notificação "Na call") |
-| iOS | `apps/mobile/ios` | Capacitor | Escolher alto-falante, ouvido ou fone; som continua em segundo plano |
+
+Linux e iOS tiveram app até a v0.5.1 e saíram: não funcionavam direito e davam trabalho de manter.
+Nesses sistemas (e no Mac) o site funciona no navegador.
 
 ## Baixar e instalar
 
@@ -18,21 +20,19 @@ Os instaladores ficam nas [Releases](https://github.com/antonioinaciodev/simple-
 - **Windows:** `SimpleCall-Windows.exe`. Instala sem pedir administrador. Como o instalador não tem
   certificado (custa caro), o Windows pode mostrar "O Windows protegeu o computador": clique em
   **Mais informações → Executar assim mesmo**.
-- **Linux:** `SimpleCall-Linux.AppImage` (qualquer distro: dê permissão de execução e abra) ou
-  `SimpleCall-Linux.deb` (Ubuntu, Mint, Debian: `sudo apt install ./SimpleCall-Linux.deb`).
 - **Android:** `SimpleCall-Android.apk`. Abra no celular e permita "instalar apps desconhecidos"
   pro navegador ou gerenciador de arquivos.
-- **iOS:** veja [iOS](#ios) abaixo.
 
 ## Gerar uma Release
 
 O workflow [`.github/workflows/apps.yml`](../.github/workflows/apps.yml) gera tudo no GitHub Actions
-(Windows, Linux, Android e iOS rodam em máquinas da GitHub, de graça em repositório público).
+(Windows e Android rodam em máquinas da GitHub, de graça em repositório público).
 
-1. No PR da versão, escreva no [`CHANGELOG.md`](../CHANGELOG.md) a seção da versão nova
-   (`## v0.4.0 (dia/mês/ano)`) e atualize o `version` dos `package.json`. O texto da Release sai
-   dessa seção do CHANGELOG.
-2. Faça o merge no `main`.
+1. Abra um PR da `dev` pra `main`. Nele, a seção "Próxima versão" do [`CHANGELOG.md`](../CHANGELOG.md)
+   vira a da versão nova (`## v0.6.0 (dia/mês/ano)`) e o `version` dos `package.json` sobe. O texto
+   da Release sai dessa seção do CHANGELOG.
+2. Faça o merge no `main` com **Create a merge commit** (não squash: assim a `dev` e a `main`
+   continuam com o mesmo histórico e o próximo PR não dá conflito).
 3. Crie a tag da versão pelo terminal:
    ```bash
    git checkout main && git pull
@@ -50,8 +50,8 @@ O workflow [`.github/workflows/apps.yml`](../.github/workflows/apps.yml) gera tu
 As versões seguem `MAIOR.MENOR.CORREÇÃO`: por enquanto cada leva de novidades sobe o do meio
 (`v0.3.0` → `v0.4.0`) e uma correção sozinha sobe o último (`v0.3.0` → `v0.3.1`).
 
-Em todo PR que mexe em `apps/desktop` ou `apps/mobile`, o mesmo workflow roda e deixa os arquivos
-pra teste em **Actions → (a execução) → Artifacts**, sem publicar nada.
+Em todo PR que mexe em `apps/desktop` ou `apps/mobile`, e quando ele entra na `dev`, o mesmo workflow
+roda e deixa os arquivos pra teste em **Actions → (a execução) → Artifacts**, sem publicar nada.
 
 ### Chave do Android (uma vez só)
 
@@ -71,19 +71,6 @@ testar, mas cada versão vai pedir pra desinstalar a anterior.
 A impressão digital dessa chave também está em `apps/worker/src/index.ts` (`ASSET_LINKS`): é o que
 faz o link de convite abrir direto no app Android. Se um dia trocar a chave, atualize lá também
 (`keytool -list -v -keystore simplecall.jks` mostra a linha `SHA256`).
-
-## iOS
-
-Duas limitações da Apple, que não dependem do código:
-
-- **Compilar precisa de um Mac.** Isso o GitHub Actions resolve (o job roda num Mac da GitHub).
-- **Instalar no iPhone precisa de assinatura.** Sem a conta paga da Apple (Apple Developer Program,
-  US$ 99 por ano), o workflow gera `SimpleCall-iOS-sem-assinatura.ipa`, que dá pra instalar com o
-  [Sideloadly](https://sideloadly.io) ou o [AltStore](https://altstore.io) usando um Apple ID comum.
-  O app instalado assim para de abrir depois de 7 dias e precisa ser reinstalado.
-
-Enquanto isso, no iPhone o site funciona no Safari (e dá pra "Adicionar à Tela de Início").
-Com a conta paga, dá pra assinar no workflow e distribuir pelo TestFlight.
 
 ## Rodar os apps no seu PC
 
@@ -108,41 +95,32 @@ npx pnpm@10 --filter @simple-call/mobile android   # sincroniza e abre o projeto
 
 No Android Studio, ligue o celular com a depuração USB ativada e clique em ▶.
 
-**iOS** só num Mac, com o Xcode: `npx pnpm@10 --filter @simple-call/mobile ios`.
-
 ## Como funciona por dentro
 
 - **Desktop** (`apps/desktop/src`): `main.ts` abre uma janela com o site, deixa só o site do Simple
   Call rodar nela (outros links abrem no navegador) e mostra `offline.html` se a internet cair.
   `preload.ts` expõe pro site `window.simplecallDesktop` com `listSources()` (telas e janelas, só
-  com o nome, pra abrir rápido), `listThumbnails()` (as miniaturas, pedidas logo depois; no Wayland não
-  tem) e `selectSource()`. O site mostra o próprio seletor e, quando chama
+  com o nome, pra abrir rápido), `listThumbnails()` (as miniaturas, pedidas logo depois) e
+  `selectSource()`. O site mostra o próprio seletor e, quando chama
   `getDisplayMedia`, o app entrega a escolha (só a imagem).
 - **Áudio só do jogo** (`apps/desktop/src/audio.ts`): o app captura o som à parte e manda pro site
   como PCM (float32, 2 canais, 48 kHz); o site toca isso num AudioWorklet e vira a faixa de áudio da
   transmissão (`apps/web/src/lib/desktopAudio.ts`).
-  - **Windows:** `native/win-audio.cpp` vira `simplecall-audio.exe` (compilado no GitHub Actions) e
-    usa o *process loopback* do WASAPI (Windows 10 2004 ou mais novo): "Só do jogo" pega o processo
-    dono da janela escolhida; "PC inteiro" pega tudo menos o próprio Simple Call.
-  - **Linux:** lista os apps tocando som com `pactl` e grava só o escolhido com
-    `parec --monitor-stream` (funciona com PipeWire e PulseAudio). Precisa do pacote
-    `pulseaudio-utils`, que já vem na maioria das distros.
+  `native/win-audio.cpp` vira `simplecall-audio.exe` (compilado no GitHub Actions) e usa o
+  *process loopback* do WASAPI (Windows 10 2004 ou mais novo): "Só do jogo" pega o processo dono da
+  janela escolhida; "PC inteiro" pega tudo menos o próprio Simple Call.
 - **Celular** (`apps/mobile`): o Capacitor abre o site num WebView. O plugin nativo `CallAudio`
-  (`CallAudioPlugin.java` e `CallAudioPlugin.swift`) lista e troca a saída de áudio e, no Android,
-  liga o `CallService` (serviço com notificação que o Android exige pra usar o mic em segundo plano).
+  (`CallAudioPlugin.java`) lista e troca a saída de áudio e liga o `CallService` (serviço com notificação que o Android exige pra usar o mic em segundo plano).
   `www/index.html` é a tela de "sem conexão".
 - **Link de convite:** cada sistema abre o app de um jeito.
   - **Android:** o link `https://.../abc-defg-hij` abre direto no app (App Links). O
     `AndroidManifest.xml` declara o domínio e o site responde `/.well-known/assetlinks.json` com a
     impressão digital da chave do APK; o Android confere isso ao instalar. O `MainActivity.java`
     recebe o link e abre a call no WebView.
-  - **Windows e Linux:** navegador de PC não repassa link https pra app nenhum, então o app registra
-    o endereço `simplecall://` (no Windows ao abrir o app, sem administrador; no Linux pelo atalho do
-    `.deb`). A página da call no navegador mostra "Abrir no app", que vai pra
+  - **Windows:** navegador de PC não repassa link https pra app nenhum, então o app registra
+    o endereço `simplecall://` ao abrir, sem administrador. A página da call no navegador mostra "Abrir no app", que vai pra
     `simplecall://abc-defg-hij`; o navegador pergunta se pode abrir o Simple Call e o `main.ts`
     leva pra call, inclusive com o app já aberto.
-  - **iOS:** o mesmo `simplecall://` (Info.plist e `SceneDelegate.swift`). O link https direto
-    (Universal Links) precisaria da conta paga da Apple.
 - **Tela cheia no celular:** o WebView do Capacitor não deixa a página sair do espaço dela, então
   no app a tela cheia da transmissão é o quadro cobrindo a tela por CSS (`useFullscreen` em
   `Tile.tsx`), e as barras do sistema somem pelo plugin `SystemBars`, que já vem no Capacitor
@@ -161,9 +139,7 @@ No Android Studio, ligue o celular com a depuração USB ativada e clique em ▶
 - **Rodando o app pelo código (`start`)** no Windows, a captura de áudio só funciona se você
   compilar `native/win-audio.cpp` (precisa do Visual Studio); no instalador ela já vem pronta.
 - **Transmitir a tela pelo celular** não é possível no WebView; o botão nem aparece no celular.
-- **"Abrir no app" no AppImage:** o `simplecall://` só fica registrado no `.deb`. O AppImage não
-  instala atalho no sistema (a não ser com o AppImageLauncher).
 - **Link de convite no Android:** vale a partir do app 0.5. Se o Android não conseguiu conferir o
   site na instalação (sem internet, por exemplo), o link abre no navegador; dá pra ligar na mão em
   **Configurações → Apps → Simple Call → Abrir por padrão**.
-- **macOS:** dá pra gerar, mas ficou de fora por enquanto (vocês usam Windows e Linux).
+- **Linux, macOS e iOS:** sem app por enquanto; o site no navegador funciona.

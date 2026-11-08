@@ -1,5 +1,5 @@
 import { AppWindow, Monitor, RefreshCw, X } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { SetPrefs } from '../App';
 import { desktop, type DesktopAudioChoice, type DesktopAudioSupport, type DesktopSource } from '../lib/native';
 import type { Prefs } from '../lib/prefs';
@@ -12,8 +12,6 @@ interface Props {
   onClose: () => void;
 }
 
-type AudioApp = { id: string; name: string };
-
 // Seletor de tela ou janela do app desktop. Abre na hora só com os nomes; as miniaturas
 // (mais lentas de tirar) chegam logo depois, nas versões do app que têm.
 // Embaixo, de onde vem o áudio da transmissão.
@@ -24,9 +22,6 @@ export function SourcePicker({ prefs, setPrefs, onPick, onClose }: Props) {
   const withThumbs = !!desktop!.listThumbnails;
   // undefined = ainda carregando; null = app antigo, sem áudio só do jogo.
   const [support, setSupport] = useState<DesktopAudioSupport | null | undefined>(desktop!.audioSupport ? undefined : null);
-  const [apps, setApps] = useState<AudioApp[]>([]);
-  // Linux: id do fluxo de áudio escolhido ('' = sem áudio).
-  const [streamId, setStreamId] = useState('');
 
   const load = useCallback(() => {
     let live = true;
@@ -36,11 +31,9 @@ export function SourcePicker({ prefs, setPrefs, onPick, onClose }: Props) {
       .then((list) => {
         if (!live) return;
         setSources(list);
-        // Uma fonte só = Wayland, onde o sistema já escolheu: não tem o que mostrar.
-        if (list.length > 1) desktop!.listThumbnails?.().then((t) => live && setThumbs(t), () => {});
+        desktop!.listThumbnails?.().then((t) => live && setThumbs(t), () => {});
       })
       .catch(() => live && setError(true));
-    desktop!.audioApps?.().then((a) => live && setApps(a), () => {});
     return () => {
       live = false;
     };
@@ -52,33 +45,12 @@ export function SourcePicker({ prefs, setPrefs, onPick, onClose }: Props) {
     desktop!.audioSupport?.().then(setSupport, () => setSupport(null));
   }, []);
 
-  // Pré-seleciona o último app usado (pelo nome) quando ele está tocando.
-  useEffect(() => {
-    if (streamId || !prefs.linuxAudioApp) return;
-    const last = apps.find((a) => a.name === prefs.linuxAudioApp);
-    if (last) setStreamId(last.id);
-  }, [apps, prefs.linuxAudioApp, streamId]);
-
   const audio = (): DesktopAudioChoice | boolean => {
     // App desktop antigo (0.1): só o liga/desliga do áudio do PC inteiro.
     if (!desktop!.startAudio) return prefs.shareAudio && desktop!.platform === 'win32';
     if (support?.app || support?.system) return { mode: prefs.desktopAudio };
-    if (support?.streams && streamId) return { mode: 'stream', streamId };
     return { mode: 'none' };
   };
-  const audioRef = useRef(audio);
-  audioRef.current = audio;
-  const pickRef = useRef(onPick);
-  pickRef.current = onPick;
-
-  // No Linux com Wayland o próprio sistema já perguntou e só volta a escolha feita.
-  // (Com lista de apps de áudio, espera a pessoa escolher o áudio antes.)
-  const autoPicked = useRef(false);
-  useEffect(() => {
-    if (sources?.length !== 1 || support === undefined || autoPicked.current || support?.streams) return;
-    autoPicked.current = true;
-    pickRef.current(sources[0], audioRef.current());
-  }, [sources, support]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
@@ -86,10 +58,7 @@ export function SourcePicker({ prefs, setPrefs, onPick, onClose }: Props) {
     return () => removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  const pick = (s: DesktopSource) => {
-    if (support?.streams) setPrefs({ linuxAudioApp: apps.find((a) => a.id === streamId)?.name ?? '' });
-    onPick(s, audio());
-  };
+  const pick = (s: DesktopSource) => onPick(s, audio());
 
   const screens = sources?.filter((s) => s.kind === 'screen') ?? [];
   const windows = sources?.filter((s) => s.kind === 'window') ?? [];
@@ -131,7 +100,7 @@ export function SourcePicker({ prefs, setPrefs, onPick, onClose }: Props) {
           </div>
         )}
         {support && (
-          <AudioSection support={support} prefs={prefs} setPrefs={setPrefs} apps={apps} streamId={streamId} setStreamId={setStreamId} />
+<AudioSection support={support} prefs={prefs} setPrefs={setPrefs} />
         )}
       </div>
     </div>
@@ -158,68 +127,26 @@ const WIN_OPTIONS = [
   { id: 'none', label: 'Sem áudio', hint: 'Só a imagem.' },
 ] as const;
 
-function AudioSection({
-  support,
-  prefs,
-  setPrefs,
-  apps,
-  streamId,
-  setStreamId,
-}: {
-  support: DesktopAudioSupport;
-  prefs: Prefs;
-  setPrefs: SetPrefs;
-  apps: AudioApp[];
-  streamId: string;
-  setStreamId: (id: string) => void;
-}) {
-  if (support.app || support.system) {
-    const current = WIN_OPTIONS.find((o) => o.id === prefs.desktopAudio) ?? WIN_OPTIONS[0];
+function AudioSection({ support, prefs, setPrefs }: { support: DesktopAudioSupport; prefs: Prefs; setPrefs: SetPrefs }) {
+  if (!support.app && !support.system) {
     return (
       <div className="source-audio">
-        <h3>Áudio</h3>
-        <div className="segmented">
-          {WIN_OPTIONS.map((o) => (
-            <button key={o.id} className={current.id === o.id ? 'selected' : ''} onClick={() => setPrefs({ desktopAudio: o.id })}>
-              {o.label}
-            </button>
-          ))}
-        </div>
-        <p className="option-hint">{current.hint}</p>
+        <p className="option-hint">O áudio do jogo não está disponível nesta instalação.</p>
       </div>
     );
   }
-
-  if (support.streams) {
-    return (
-      <div className="source-audio">
-        <label className="field">
-          <span>Áudio de qual app?</span>
-          <select className="input" value={streamId} onChange={(e) => setStreamId(e.target.value)}>
-            <option value="">Sem áudio</option>
-            {apps.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <p className="option-hint">
-          {apps.length
-            ? 'Só o som desse app vai junto, sem as vozes da call.'
-            : 'Nenhum app tocando som agora. Abra o jogo e clique em atualizar.'}
-        </p>
-      </div>
-    );
-  }
-
+  const current = WIN_OPTIONS.find((o) => o.id === prefs.desktopAudio) ?? WIN_OPTIONS[0];
   return (
     <div className="source-audio">
-      <p className="option-hint">
-        {desktop!.platform === 'linux'
-          ? 'Pra mandar o áudio de um app, instale o pulseaudio-utils (sudo apt install pulseaudio-utils) e abra o Simple Call de novo.'
-          : 'O áudio do jogo não está disponível nesta instalação.'}
-      </p>
+      <h3>Áudio</h3>
+      <div className="segmented">
+        {WIN_OPTIONS.map((o) => (
+          <button key={o.id} className={current.id === o.id ? 'selected' : ''} onClick={() => setPrefs({ desktopAudio: o.id })}>
+            {o.label}
+          </button>
+        ))}
+      </div>
+      <p className="option-hint">{current.hint}</p>
     </div>
   );
 }

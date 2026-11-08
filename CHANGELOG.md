@@ -1,11 +1,22 @@
 # Novidades
 
-O que mudou em cada versão. As versões valem pros apps (Windows, Linux, Android e iOS); o
+O que mudou em cada versão. As versões valem pros apps (Windows e Android); o
 [site](https://simplecall.antonioinaciodev.workers.dev) e os apps já instalados recebem as mudanças
-do site sozinhos a cada merge no `main`, sem precisar baixar de novo.
+do site sozinhos a cada versão que entra no `main`, sem precisar baixar de novo.
+
+Cada PR que entra na `dev` escreve o que mudou em "Próxima versão". Ao lançar, essa seção vira
+`## vX.Y.Z (dia/mês/ano)`.
 
 Os instaladores de cada versão estão nas [Releases](https://github.com/antonioinaciodev/simple-call/releases).
 Pra publicar uma versão nova, veja [docs/APPS.md](docs/APPS.md#gerar-uma-release).
+
+## Próxima versão
+
+**Branch dev e apps só pra Windows e Android** ([#24](https://github.com/antonioinaciodev/simple-call/pull/24))
+
+- As novidades agora entram primeiro na branch `dev` e só vão pro ar quando sai uma versão. O CI confere tudo na `dev` também, sem gerar Release.
+- A `dev` pode ter um site de teste próprio (`simplecall-dev`), separado do site de todo mundo.
+- Os apps de Linux e iOS saíram: não funcionavam direito e deixavam cada versão mais lenta de gerar. No Linux, no Mac e no iPhone o Simple Call segue funcionando no navegador.
 
 ## v0.5.1 (31/10/2026)
 

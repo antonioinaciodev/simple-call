@@ -1,8 +1,9 @@
+# Confere tipos e build em todo PR (pra dev ou pra main) e em cada push na dev e na main.
 name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
 
 jobs:

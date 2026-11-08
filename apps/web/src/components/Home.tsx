@@ -15,28 +15,11 @@ const DOWNLOADS: { os: Os; name: string; short: string; note: string; files: { l
     files: [{ label: 'Baixar .exe', file: 'SimpleCall-Windows.exe' }],
   },
   {
-    os: 'linux',
-    name: 'Linux',
-    short: 'Linux',
-    note: 'AppImage roda em qualquer distro; o .deb é pra Ubuntu, Mint e Debian.',
-    files: [
-      { label: 'AppImage', file: 'SimpleCall-Linux.AppImage' },
-      { label: '.deb', file: 'SimpleCall-Linux.deb' },
-    ],
-  },
-  {
     os: 'android',
     name: 'Android',
     short: 'Android',
     note: 'Android 7 ou mais novo. Permita instalar apps de fontes desconhecidas.',
     files: [{ label: 'Baixar .apk', file: 'SimpleCall-Android.apk' }],
-  },
-  {
-    os: 'ios',
-    name: 'iPhone',
-    short: 'iPhone',
-    note: 'Sem assinatura da Apple: só com Sideloadly ou AltStore, e vale 7 dias. No Safari funciona direto.',
-    files: [{ label: 'Baixar .ipa', file: 'SimpleCall-iOS-sem-assinatura.ipa' }],
   },
 ];
 
@@ -109,7 +92,7 @@ export function Home({ navigate }: { navigate: (to: string) => void }) {
 
           {!inApp && (
             <p className="hero-download muted">
-              {mine && mine.os !== 'ios' ? (
+              {mine ? (
                 <>
                   Funciona aqui no navegador, ou{' '}
                   <a href={latest(mine.files[0].file)}>
@@ -166,7 +149,7 @@ export function Home({ navigate }: { navigate: (to: string) => void }) {
               ))}
             </div>
             <p className="muted small-note">
-              No Mac ainda não tem app: use no navegador. O Windows pode avisar "protegeu o computador" porque o instalador
+              No Linux, no Mac e no iPhone não tem app: use no navegador. O Windows pode avisar "protegeu o computador" porque o instalador
               não tem certificado pago: <em>Mais informações → Executar assim mesmo</em>.
             </p>
           </section>
