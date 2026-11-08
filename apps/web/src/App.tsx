@@ -1,6 +1,8 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { Home } from './components/Home';
+import { Landing } from './components/Landing';
 import { parseRoomCode } from './lib/api';
+import { inApp } from './lib/native';
 import { loadPrefs, savePrefs, type Prefs } from './lib/prefs';
 
 // A parte de chamada só é baixada quando alguém abre uma call, deixando a tela inicial leve.
@@ -31,11 +33,17 @@ export function App() {
   }, []);
 
   const navigate = useCallback((to: string) => {
+    const [pathname, hash] = to.split('#');
     history.pushState(null, '', to);
-    setPath(to);
+    setPath(pathname);
+    // Página nova começa do topo (ou na seção do link).
+    if (hash) document.getElementById(hash)?.scrollIntoView();
+    else scrollTo(0, 0);
   }, []);
 
-  const code = path === '/' ? null : parseRoomCode(path);
+  // Navegador: / é a apresentação e /app é o app. Nos apps instalados a raiz já é o app.
+  if (path === '/' && !inApp) return <Landing navigate={navigate} />;
+  const code = path === '/' || path === '/app' ? null : parseRoomCode(path);
   if (!code) return <Home navigate={navigate} />;
   return (
     <Suspense fallback={<div className="center-page muted">Carregando…</div>}>

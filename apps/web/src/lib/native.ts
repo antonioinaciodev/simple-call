@@ -110,6 +110,10 @@ export function detectOs(): Os | null {
   return null;
 }
 
+// Início do app: no navegador a raiz é a página de apresentação e o app fica em /app; dentro dos
+// apps instalados (que abrem a raiz do site) a raiz já é o app.
+export const APP_HOME = inApp ? '/' : '/app';
+
 // Endereço que abre a call no app instalado (o app registra o simplecall:// no sistema).
 // Do navegador, é o único jeito de abrir o app de PC; no Android o link https já abre sozinho.
 export const appLink = (code: string) => `simplecall://${code}`;
