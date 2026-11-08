@@ -1,7 +1,7 @@
 {
   "name": "@simple-call/mobile",
   "private": true,
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "Simple Call para Android (Capacitor).",
   "scripts": {
     "sync": "cap sync",

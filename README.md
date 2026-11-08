@@ -14,7 +14,7 @@ Chamadas leves pra jogar e transmitir com os amigos. Estilo Meet: você cria a c
 
 ## Baixar
 
-Versão atual: **v0.5.1** ([o que mudou](CHANGELOG.md)). Dá pra usar direto no [navegador](https://simplecall.antonioinaciodev.workers.dev), sem instalar nada, ou baixar o app:
+Versão atual: **v0.6.0** ([o que mudou](CHANGELOG.md)). Dá pra usar direto no [navegador](https://simplecall.antonioinaciodev.workers.dev), sem instalar nada, ou baixar o app:
 
 | Sistema | Download | Observação |
 | --- | --- | --- |
@@ -166,7 +166,7 @@ branch da mudança ──PR──> dev ──PR "release"──> main ──tag 
 - [x] Seletor de janelas com miniaturas e ajuste fino do encoder (v0.3.0)
 - [x] Página inicial com os downloads e abertura animada nos apps (v0.4.0)
 - [x] Link de convite abre direto no app (v0.5.0)
-- [x] Branch `dev` pra juntar as novidades antes de lançar; apps só pra Windows e Android
+- [x] Branch `dev`, apps só pra Windows e Android, transmissão com "Assistir", página de apresentação e atualização dentro do app (v0.6.0)
 - [ ] TURN, se alguém não conseguir conectar direto
 - [ ] Senha ou sala de espera na call
 

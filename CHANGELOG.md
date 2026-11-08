@@ -10,7 +10,7 @@ Cada PR que entra na `dev` escreve o que mudou em "Próxima versão". Ao lançar
 Os instaladores de cada versão estão nas [Releases](https://github.com/antonioinaciodev/simple-call/releases).
 Pra publicar uma versão nova, veja [docs/APPS.md](docs/APPS.md#gerar-uma-release).
 
-## Próxima versão
+## v0.6.0 (08/11/2026)
 
 **Branch dev e apps só pra Windows e Android** ([#24](https://github.com/antonioinaciodev/simple-call/pull/24))
 
