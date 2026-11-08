@@ -1,12 +1,27 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Mesh } from '../lib/mesh';
 import { MAX_VOICE_VOLUME } from '../lib/volumes';
 import { Tile, type TileItem } from './Tile';
 
 // Grade quase quadrada: 1 → 1x1, 2 → 2x1, 3-4 → 2x2, 5-6 → 3x2, 7-9 → 3x3...
-function gridSize(n: number) {
-  const cols = Math.ceil(Math.sqrt(n));
-  return { cols, rows: Math.ceil(n / cols) };
+// Na tela em pé (celular) ela vira: 2 → 1x2, 5-6 → 2x3, pra cada quadro ficar maior.
+function gridSize(n: number, tall: boolean) {
+  const long = Math.ceil(Math.sqrt(n));
+  const short = Math.ceil(n / long);
+  return tall ? { cols: short, rows: long } : { cols: long, rows: short };
+}
+
+const TALL = '(orientation: portrait) and (max-width: 720px)';
+
+function useTall() {
+  const [tall, setTall] = useState(() => matchMedia(TALL).matches);
+  useEffect(() => {
+    const mq = matchMedia(TALL);
+    const update = () => setTall(mq.matches);
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+  return tall;
 }
 
 interface Props {
@@ -20,6 +35,7 @@ interface Props {
 
 export function Stage({ mesh, speaking, voiceVolume, setVoiceVolume, streamVolume, setStreamVolume }: Props) {
   const [pinned, setPinned] = useState<string | null>(null);
+  const tall = useTall();
 
   const cameras: TileItem[] = [
     {
@@ -109,7 +125,7 @@ export function Stage({ mesh, speaking, voiceVolume, setVoiceVolume, streamVolum
     );
   }
 
-  const { cols, rows } = gridSize(cameras.length);
+  const { cols, rows } = gridSize(cameras.length, tall);
   return (
     <div className="grid" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)`, gridTemplateRows: `repeat(${rows}, 1fr)` }}>
       {cameras.map((t) => (

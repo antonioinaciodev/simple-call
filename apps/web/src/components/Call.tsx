@@ -58,6 +58,8 @@ export function Call({ code, prefs, setPrefs, onLeave }: Props) {
   const [error, setError] = useState('');
   const [toast, setToast] = useState('');
   const [panel, setPanel] = useState<Panel>(null);
+  const panelRef = useRef<Panel>(null);
+  panelRef.current = panel;
   const [showStats, setShowStats] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const prefsRef = useRef(prefs);
@@ -108,7 +110,11 @@ export function Call({ code, prefs, setPrefs, onLeave }: Props) {
           codec: p.screenCodec,
           audio: audioSettings(p),
           onChange: rerender,
-          onChat: (msg) => setMessages((prev) => [...prev, msg].slice(-MAX_MESSAGES)),
+          onChat: (msg) => {
+            setMessages((prev) => [...prev, msg].slice(-MAX_MESSAGES));
+            // Com o chat aberto a mensagem já aparece na tela: som só com ele fechado.
+            if (!msg.isLocal && panelRef.current !== 'chat') sound('message');
+          },
           onPeerEvent: (e) => sound(e),
           onClose: (reason) => onLeaveRef.current(reason),
         });
@@ -175,6 +181,7 @@ export function Call({ code, prefs, setPrefs, onLeave }: Props) {
           const on = !mesh.camera;
           setPrefs({ camOn: on });
           mesh.setCamera(on ? await capture('video', cameraConstraints(prefsRef.current)) : null);
+          sound(on ? 'camOn' : 'camOff', true);
         }, 'Não deu pra acessar a câmera.'),
       share: (opts) =>
         run(async () => {
@@ -187,9 +194,13 @@ export function Call({ code, prefs, setPrefs, onLeave }: Props) {
             viaApp ? false : p.shareAudio,
             opts?.appAudio ? startAppAudio : undefined,
           );
+          sound('shareOn', true);
           if (audioError) flash(AUDIO_ERRORS[audioError] ?? 'Não deu pra pegar o áudio do jogo. A tela vai sem som.');
         }, 'Não deu pra transmitir a tela.'),
-      stopShare: () => mesh.stopScreen(),
+      stopShare: () => {
+        mesh.stopScreen();
+        sound('shareOff', true);
+      },
       applyPrefs: (next, recapture) =>
         run(async () => {
           mesh.setAudio(audioSettings(next));
@@ -264,6 +275,7 @@ export function Call({ code, prefs, setPrefs, onLeave }: Props) {
         toggleStats={() => setShowStats((s) => !s)}
         onLeave={() => onLeave()}
         toast={toast}
+        tap={() => sound('tap', true)}
       />
       {peers.map((p) => (
         <RemoteAudio

@@ -218,7 +218,7 @@ export function Settings({ prefs, setPrefs, actions, onClose }: Props) {
           <h3>Sons</h3>
           <Toggle
             label="Sons da call"
-            hint="Quando alguém entra, sai, muta ou desliga o som. E quando você muta."
+            hint="Quando alguém entra, sai, muta, transmite ou manda mensagem, e um toque leve nos botões."
             checked={prefs.sounds}
             onChange={(v) => setPrefs({ sounds: v })}
           />
