@@ -1,7 +1,7 @@
 // Sons curtos da call (alguém entrou, mutou...), gerados na hora: sem arquivo pra baixar.
 // O mesmo AudioContext serve pra aumentar o volume de alguém acima de 100% (RemoteAudio).
 
-export type SoundKind = 'join' | 'leave' | 'mute' | 'unmute' | 'deafen' | 'undeafen';
+export type SoundKind = 'join' | 'leave' | 'mute' | 'unmute' | 'deafen' | 'undeafen' | 'stream';
 
 type SinkContext = AudioContext & { setSinkId?: (id: string) => Promise<void> };
 
@@ -32,6 +32,8 @@ const NOTES: Record<SoundKind, number[]> = {
   mute: [660, 440],
   undeafen: [392, 523, 659],
   deafen: [659, 523, 392],
+  // Alguém começou a transmitir.
+  stream: [587, 880],
 };
 const NOTE_S = 0.07;
 

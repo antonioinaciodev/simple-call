@@ -41,6 +41,7 @@ Os apps abrem o mesmo site por dentro, então as novidades do site chegam sozinh
 **Transmissão**
 
 - **Tela ou janela** em 1080p 60, 720p 60, 1080p 30 ou 720p 30.
+- **Só assiste quem quer:** a transmissão aparece como um quadro com o botão "Assistir", e só vai pra quem clicou (sem gastar banda à toa). Quem transmite vê quantos estão assistindo.
 - **Áudio só do jogo, sem as vozes da call,** no app de Windows. No navegador, o áudio do sistema vai junto só no Windows com "Tela inteira".
 - **Codec automático:** o melhor que a placa de vídeo de quem transmite e de quem assiste aguenta. Também dá pra escolher H.264, VP9, AV1 ou VP8 na mão.
 - **Encoder ajustado pra jogo:** a voz vai com redundância (aguenta perda de pacote no Wi-Fi e no 4G), a transmissão tem prioridade sobre a câmera, o áudio do jogo vai em estéreo sem cortes e, com pouca banda, a imagem encolhe um pouco em vez de perder quadros.

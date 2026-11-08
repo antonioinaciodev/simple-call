@@ -63,6 +63,8 @@ Cada pessoa tem um `RTCPeerConnection` com cada uma das outras (malha completa).
 
 **Um transceiver por tipo de mídia.** Cada conexão tem até quatro: `mic`, `camera`, `screen` e `screenAudio`. Ligar e desligar troca só a faixa (`replaceTrack`), sem criar transceivers novos. O mic nem renegocia: só fica mudo. Como o outro lado não tem como saber se um vídeo é câmera ou tela, quem envia manda pelo canal de dados o tipo de cada faixa, indexado pelo `mid`.
 
+**Transmissão sob demanda.** Começar a transmitir só avisa (`sharing` no estado do canal de dados). A tela e o áudio dela só vão pra quem clicou em **Assistir** (`watch` no estado de quem assiste, guardado por id pra sobreviver a uma conexão refeita). Quem não assiste não recebe nada, então quem transmite não gasta banda nem encoder com ninguém à toa. Quando a transmissão acaba, a próxima volta a pedir o clique.
+
 **Volume de cada pessoa.** Até 100% quem ajusta é o próprio `<audio>`, sem custo extra. Acima disso o áudio passa por um `GainNode` do Web Audio, e o `<audio>` continua tocando mudo: sem ele o Chrome não entrega o áudio da conexão pro Web Audio. Os sons da call (entrar, sair, mutar) são gerados com osciladores nesse mesmo `AudioContext`, sem arquivo pra baixar.
 
 ## Qualidade

@@ -1,4 +1,4 @@
-import { HeadphoneOff, Maximize, MicOff, Minimize, MonitorUp, Volume1, Volume2, VolumeX, WifiOff } from 'lucide-react';
+import { EyeOff, HeadphoneOff, Maximize, MicOff, Minimize, MonitorUp, Volume1, Volume2, VolumeX, WifiOff } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { mobilePlatform, setFullscreenBars } from '../lib/native';
 
@@ -14,7 +14,14 @@ export interface TileItem {
   badSignal: boolean;
   // Volume de quem eu escuto (1 = 100%); ausente no meu próprio quadro.
   volume?: { value: number; max: number; onChange: (v: number) => void };
+  // Transmissão de outra pessoa: ainda fechada (watch abre) ou aberta (stopWatching fecha).
+  watch?: () => void;
+  stopWatching?: () => void;
+  // Minha transmissão: quantas pessoas estão assistindo.
+  viewers?: number;
 }
+
+const viewersText = (n: number) => (n === 0 ? 'ninguém assistindo' : n === 1 ? '1 assistindo' : `${n} assistindo`);
 
 interface Props {
   item: TileItem;
@@ -36,6 +43,8 @@ export function Tile({ item, fit, onClick }: Props) {
   const hideOwnScreen = isScreen && isLocal && !preview;
   const showVideo = !!stream && !hideOwnScreen;
   const canFullscreen = isScreen && showVideo;
+  // Clicou em Assistir e a imagem ainda não chegou.
+  const opening = isScreen && !isLocal && !stream && !item.watch;
   const label = isScreen ? `Tela de ${name}` : isLocal ? `${name} (você)` : name;
 
   useEffect(() => {
@@ -48,14 +57,15 @@ export function Tile({ item, fit, onClick }: Props) {
       className={[
         'tile',
         item.speaking && !isScreen && 'speaking',
-        onClick && !fullscreen.active && 'clickable',
+        (onClick || item.watch) && !fullscreen.active && 'clickable',
+        isScreen && !isLocal && showVideo && 'stream-in',
         fullscreen.pseudo && 'pseudo-fullscreen',
         fullscreen.active && (controls.visible ? 'fs-controls' : 'fs-idle'),
       ]
         .filter(Boolean)
         .join(' ')}
       // Na tela cheia, clicar ou tocar na imagem mostra (ou esconde) o volume e o botão de sair.
-      onClick={fullscreen.active ? controls.toggle : onClick}
+      onClick={fullscreen.active ? controls.toggle : (item.watch ?? onClick)}
       onDoubleClick={canFullscreen ? fullscreen.toggle : undefined}
     >
       {showVideo ? (
@@ -68,10 +78,30 @@ export function Tile({ item, fit, onClick }: Props) {
           className={!isScreen && isLocal ? 'mirror' : undefined}
           style={{ objectFit: fit }}
         />
+      ) : item.watch ? (
+        <div className="own-screen">
+          <MonitorUp size={28} />
+          <span>{name} está transmitindo</span>
+          <button
+            className="btn primary small"
+            onClick={(e) => {
+              e.stopPropagation();
+              item.watch?.();
+            }}
+          >
+            Assistir
+          </button>
+        </div>
+      ) : opening ? (
+        <div className="own-screen">
+          <MonitorUp size={28} className="pulse" />
+          <span>Abrindo a transmissão…</span>
+        </div>
       ) : hideOwnScreen ? (
         <div className="own-screen">
           <MonitorUp size={28} />
           <span>Você está transmitindo</span>
+          {item.viewers !== undefined && <span className="small">{viewersText(item.viewers)}</span>}
           <button
             className="btn ghost small"
             onClick={(e) => {
@@ -94,9 +124,24 @@ export function Tile({ item, fit, onClick }: Props) {
         {item.badSignal && <WifiOff size={13} aria-hidden />}
         <span>{label}</span>
         {item.badSignal && <span className="tile-status">reconectando…</span>}
+        {!item.badSignal && item.viewers !== undefined && !hideOwnScreen && <span className="tile-status">{viewersText(item.viewers)}</span>}
       </div>
       {item.volume && (
         <VolumeControl {...item.volume} label={isScreen ? 'Volume da transmissão' : `Volume de ${name}`} onActivity={controls.keep} />
+      )}
+      {item.stopWatching && !fullscreen.active && (
+        <button
+          className="tile-action second"
+          onClick={(e) => {
+            e.stopPropagation();
+            item.stopWatching?.();
+          }}
+          onDoubleClick={(e) => e.stopPropagation()}
+          aria-label="Parar de assistir"
+          title="Parar de assistir"
+        >
+          <EyeOff size={16} />
+        </button>
       )}
       {canFullscreen && (
         <button
