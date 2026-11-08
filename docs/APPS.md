@@ -3,7 +3,9 @@
 Os apps são uma "casca" em volta do site. A interface é a mesma do navegador e vem direto de
 https://simplecall.antonioinaciodev.workers.dev, então **todo deploy do site já atualiza os apps**,
 sem ninguém precisar baixar de novo. Só é preciso gerar instaladores novos quando muda algo
-da parte nativa (pastas `apps/desktop` e `apps/mobile`).
+da parte nativa (pastas `apps/desktop` e `apps/mobile`). Quando sai uma Release nova, os apps
+mostram **"Versão X disponível · Atualizar"** e se atualizam por dentro (veja
+[Atualização dentro do app](#atualização-dentro-do-app)).
 
 | | Pasta | Tecnologia | O que o app faz além do site |
 | --- | --- | --- | --- |
@@ -131,6 +133,25 @@ No Android Studio, ligue o celular com a depuração USB ativada e clique em ▶
   navegador nada muda. No navegador a raiz (`/`) é a página de apresentação (`Landing.tsx`,
   com os downloads) e o app fica em `/app`; dentro dos apps a raiz já é o app (`APP_HOME`), e a abertura animada fica no `apps/web/index.html`, em CSS puro, pra aparecer antes
   de carregar qualquer JavaScript. O `@capacitor/core` só é baixado dentro do app do celular.
+
+## Atualização dentro do app
+
+Ao abrir, o app (`apps/web/src/lib/update.ts`) compara a versão instalada com a Release mais
+recente do GitHub (no máximo uma consulta a cada 6 horas) e, se tiver uma mais nova, mostra o
+aviso no canto de baixo (`UpdateNotice.tsx`). No clique:
+
+- **Windows** (`apps/desktop/src/update.ts`): o app pede ao GitHub os dados daquela versão, baixa o
+  `SimpleCall-Windows.exe`, confere o SHA-256 que o GitHub publica de cada arquivo e roda o
+  instalador sem janela (`/S --force-run`). O app fecha, instala e abre de novo sozinho.
+- **Android** (`AppUpdatePlugin.java`): o mesmo com o `SimpleCall-Android.apk`, e no fim abre o
+  instalador do Android, que pede pra confirmar. Na primeira vez o Android pede pra permitir
+  "instalar apps desconhecidos" pro Simple Call; depois é só tocar em Atualizar de novo.
+- **Apps até a 0.5.1**, que não sabem se atualizar: o aviso aparece igual e o botão abre o download
+  no navegador.
+
+O site só diz qual versão instalar; o endereço e o hash do arquivo vêm direto do GitHub. Versões de
+teste (dos Artifacts, `0.0.0-teste`) não mostram o aviso. Pra funcionar, a Release precisa ter os
+arquivos com os nomes de sempre (o workflow já gera assim) e o APK assinado com a mesma chave.
 
 ## Limitações conhecidas
 

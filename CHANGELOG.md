@@ -30,6 +30,14 @@ Pra publicar uma versão nova, veja [docs/APPS.md](docs/APPS.md#gerar-uma-releas
 - No navegador, o endereço principal virou uma página de apresentação, como a de outros apps: o que é o Simple Call, uma imagem dele, o que ele tem e os downloads, com os botões **Baixar** (pro seu sistema) e **Abrir no navegador**.
 - O app no navegador fica em `/app`, só com criar e entrar na call. Os links de call continuam iguais, e os apps instalados continuam abrindo direto no app.
 
+**Atualização dentro do app** ([#27](https://github.com/antonioinaciodev/simple-call/pull/27))
+
+- Quando sai uma versão nova, os apps mostram "Versão X disponível" com o botão **Atualizar**.
+- Windows: o app baixa, instala e abre de novo sozinho, sem precisar passar pelo instalador.
+- Android: o app baixa e abre o instalador do Android. Na primeira vez ele pede pra permitir instalar apps do Simple Call.
+- O arquivo baixado é conferido com o hash que o GitHub publica antes de instalar.
+- Quem ainda está com o app 0.5 vê o mesmo aviso, que abre o download no navegador. Da 0.6 em diante a atualização é por dentro.
+
 ## v0.5.1 (31/10/2026)
 
 **Tela cheia de verdade no celular** ([#23](https://github.com/antonioinaciodev/simple-call/pull/23))

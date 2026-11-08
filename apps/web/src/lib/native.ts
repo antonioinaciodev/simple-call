@@ -28,6 +28,10 @@ interface DesktopBridge {
   startAudio?: () => Promise<{ ok: boolean; error?: string }>;
   stopAudio?: () => Promise<void>;
   onAudio?: (onData: (chunk: Uint8Array) => void, onEnd: () => void) => () => void;
+  // Da versão 0.6 do app em diante: atualizar de dentro do app (apps/desktop/src/update.ts).
+  appVersion?: () => Promise<string | null>;
+  installUpdate?: (version: string) => Promise<{ ok: boolean; error?: string }>;
+  onUpdateProgress?: (fn: (pct: number) => void) => () => void;
 }
 
 // Exposto pelo preload do app desktop (apps/desktop/src/preload.ts).

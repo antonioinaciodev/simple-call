@@ -52,7 +52,7 @@ Os apps abrem o mesmo site por dentro, então as novidades do site chegam sozinh
 - **Áudio ajustável:** de 24 a 128 kbps (estéreo nas opções de música), cancelamento de eco, supressão de ruído, ganho automático e DTX.
 - Contorno em quem está falando, tela cheia na transmissão (botão ou dois cliques) e tema escuro ou claro, só em escala de cinza.
 - Funciona no celular. Os ajustes ficam salvos no navegador.
-- **Apps pra Windows e Android** ([detalhes](docs/APPS.md)), com uma abertura animada curta: no PC, seletor próprio de tela ou janela com miniaturas; no celular, escolha entre alto-falante, ouvido e fone, e o mic segue funcionando com o app em segundo plano.
+- **Apps pra Windows e Android** ([detalhes](docs/APPS.md)), que avisam quando sai versão nova e se atualizam com um clique, com uma abertura animada curta: no PC, seletor próprio de tela ou janela com miniaturas; no celular, escolha entre alto-falante, ouvido e fone, e o mic segue funcionando com o app em segundo plano.
 - Atalhos: `M` microfone, `D` som da call, `V` câmera, `S` transmitir tela, `C` chat.
 
 | | |

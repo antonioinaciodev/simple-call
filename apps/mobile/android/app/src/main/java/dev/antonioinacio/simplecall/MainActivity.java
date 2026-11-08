@@ -23,6 +23,7 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         // Plugins do próprio app precisam ser registrados antes do super.onCreate.
         registerPlugin(CallAudioPlugin.class);
+        registerPlugin(AppUpdatePlugin.class);
         super.onCreate(savedInstanceState);
         // Tela cheia de verdade (o site esconde as barras pelo plugin SystemBars):
         // puxar da borda mostra as barras só por um instante, e a imagem pode ocupar

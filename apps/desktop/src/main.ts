@@ -5,6 +5,7 @@
 import { app, BrowserWindow, desktopCapturer, ipcMain, session, shell, type WebContents } from 'electron';
 import path from 'node:path';
 import { audioSupport, startAudio, stopAudio, type AudioChoice } from './audio';
+import { installUpdate } from './update';
 
 const PROD_URL = 'https://simplecall.antonioinaciodev.workers.dev';
 // SIMPLECALL_URL só vale fora do instalador (pnpm start:local aponta pro Vite).
@@ -205,6 +206,13 @@ function setupIpc() {
     return startAudio(audioChoice, e.sender);
   });
   ipcMain.handle('audio:stop', () => stopAudio());
+
+  // Atualização: a versão instalada e instalar outra (veja update.ts).
+  ipcMain.handle('app:version', (e) => (isAppUrl(e.sender.getURL()) ? app.getVersion() : null));
+  ipcMain.handle('update:install', (e, version: unknown) => {
+    if (!isAppUrl(e.sender.getURL())) return { ok: false };
+    return installUpdate(version, e.sender);
+  });
 }
 
 // Escolha de áudio vinda do site, conferida campo a campo.

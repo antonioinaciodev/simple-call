@@ -74,6 +74,8 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <!-- Atualizar o app de dentro dele (AppUpdatePlugin): abrir o instalador com o APK novo. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!-- Câmera não é obrigatória: o app instala em aparelho sem câmera. -->
     <uses-feature android:name="android.hardware.camera" android:required="false" />

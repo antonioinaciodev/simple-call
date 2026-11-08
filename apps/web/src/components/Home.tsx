@@ -2,6 +2,7 @@ import { ArrowLeft } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { createRoom, parseRoomCode } from '../lib/api';
 import { inApp } from '../lib/native';
+import { UpdateNotice } from './UpdateNotice';
 
 // Início do app: criar uma call ou entrar numa. No navegador fica em /app; a apresentação e os
 // downloads ficam na página da raiz (Landing).
@@ -74,6 +75,7 @@ export function Home({ navigate }: { navigate: (to: string) => void }) {
           </p>
         )}
       </div>
+      <UpdateNotice />
     </div>
   );
 }
