@@ -22,6 +22,14 @@ contextBridge.exposeInMainWorld('simplecallDesktop', {
   audioSupport: () => ipcRenderer.invoke('audio:support'),
   startAudio: () => ipcRenderer.invoke('audio:start'),
   stopAudio: () => ipcRenderer.invoke('audio:stop'),
+  // Atualização (da versão 0.6 em diante): versão instalada, instalar outra e o progresso (0 a 100).
+  appVersion: (): Promise<string | null> => ipcRenderer.invoke('app:version'),
+  installUpdate: (version: string): Promise<{ ok: boolean; error?: string }> => ipcRenderer.invoke('update:install', version),
+  onUpdateProgress: (fn: (pct: number) => void) => {
+    const listener = (_e: unknown, pct: number) => fn(pct);
+    ipcRenderer.on('update:progress', listener);
+    return () => ipcRenderer.removeListener('update:progress', listener);
+  },
   // Pedaços de PCM float32 (2 canais, 48 kHz). Devolve a função que para de ouvir.
   onAudio: (onData: (chunk: Uint8Array) => void, onEnd: () => void) => {
     const data = (_e: unknown, chunk: Uint8Array) => onData(chunk);
