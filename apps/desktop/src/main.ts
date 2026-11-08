@@ -4,7 +4,8 @@
 // do Chrome e mandar o áudio do PC junto com qualquer janela no Windows.
 import { app, BrowserWindow, desktopCapturer, ipcMain, session, shell, type WebContents } from 'electron';
 import path from 'node:path';
-import { audioApps, audioSupport, startAudio, stopAudio, type AudioChoice } from './audio';
+import { audioSupport, startAudio, stopAudio, type AudioChoice } from './audio';
+import { installUpdate } from './update';
 
 const PROD_URL = 'https://simplecall.antonioinaciodev.workers.dev';
 // SIMPLECALL_URL só vale fora do instalador (pnpm start:local aponta pro Vite).
@@ -12,7 +13,7 @@ const APP_URL = new URL((!app.isPackaged && process.env.SIMPLECALL_URL) || PROD_
 const APP_ORIGIN = APP_URL.origin;
 
 // Link de convite: o botão "Abrir no app" do site manda pra simplecall://abc-defg-hij.
-// O Windows e o Linux entregam esse endereço como argumento ao abrir o app (ou pro app que já
+// O Windows entrega esse endereço como argumento ao abrir o app (ou pro app que já
 // está aberto, pelo second-instance). Link https não dá: navegador de PC nunca repassa pra app.
 const SCHEME = 'simplecall';
 const CODE_RE = /^[a-z]{3}-[a-z]{4}-[a-z]{3}$/;
@@ -200,12 +201,18 @@ function setupIpc() {
   });
 
   ipcMain.handle('audio:support', (e) => (isAppUrl(e.sender.getURL()) ? audioSupport() : null));
-  ipcMain.handle('audio:apps', (e) => (isAppUrl(e.sender.getURL()) ? audioApps() : []));
   ipcMain.handle('audio:start', (e) => {
     if (!isAppUrl(e.sender.getURL())) return { ok: false };
     return startAudio(audioChoice, e.sender);
   });
   ipcMain.handle('audio:stop', () => stopAudio());
+
+  // Atualização: a versão instalada e instalar outra (veja update.ts).
+  ipcMain.handle('app:version', (e) => (isAppUrl(e.sender.getURL()) ? app.getVersion() : null));
+  ipcMain.handle('update:install', (e, version: unknown) => {
+    if (!isAppUrl(e.sender.getURL())) return { ok: false };
+    return installUpdate(version, e.sender);
+  });
 }
 
 // Escolha de áudio vinda do site, conferida campo a campo.
@@ -216,7 +223,6 @@ function parseChoice(v: unknown, sourceId: string): AudioChoice | null {
   if (c.mode === 'system') return { mode: 'system' };
   if (c.mode === 'app' && sourceId.startsWith('window:')) return { mode: 'app', sourceId };
   if (c.mode === 'app') return { mode: 'system' }; // tela inteira: tudo menos a call
-  if (c.mode === 'stream' && typeof c.streamId === 'string') return { mode: 'stream', streamId: c.streamId };
   return null;
 }
 
@@ -244,7 +250,5 @@ if (!app.requestSingleInstanceLock()) {
     });
   });
   app.on('before-quit', stopAudio);
-  app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') app.quit();
-  });
+  app.on('window-all-closed', () => app.quit());
 }

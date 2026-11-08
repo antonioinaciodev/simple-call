@@ -1,11 +1,49 @@
 # Novidades
 
-O que mudou em cada versão. As versões valem pros apps (Windows, Linux, Android e iOS); o
+O que mudou em cada versão. As versões valem pros apps (Windows e Android); o
 [site](https://simplecall.antonioinaciodev.workers.dev) e os apps já instalados recebem as mudanças
-do site sozinhos a cada merge no `main`, sem precisar baixar de novo.
+do site sozinhos a cada versão que entra no `main`, sem precisar baixar de novo.
+
+Cada PR que entra na `dev` escreve o que mudou em "Próxima versão". Ao lançar, essa seção vira
+`## vX.Y.Z (dia/mês/ano)`.
 
 Os instaladores de cada versão estão nas [Releases](https://github.com/antonioinaciodev/simple-call/releases).
 Pra publicar uma versão nova, veja [docs/APPS.md](docs/APPS.md#gerar-uma-release).
+
+## v0.6.0 (08/11/2026)
+
+**Branch dev e apps só pra Windows e Android** ([#24](https://github.com/antonioinaciodev/simple-call/pull/24))
+
+- As novidades agora entram primeiro na branch `dev` e só vão pro ar quando sai uma versão. O CI confere tudo na `dev` também, sem gerar Release.
+- A `dev` pode ter um site de teste próprio (`simplecall-dev`), separado do site de todo mundo.
+- Os apps de Linux e iOS saíram: não funcionavam direito e deixavam cada versão mais lenta de gerar. No Linux, no Mac e no iPhone o Simple Call segue funcionando no navegador.
+
+**Transmissão só abre com "Assistir"** ([#25](https://github.com/antonioinaciodev/simple-call/pull/25))
+
+- Quando alguém começa a transmitir, aparece um quadro "Fulano está transmitindo" com o botão **Assistir**, e um som curto avisa. Ninguém vê nem ouve nada antes de clicar.
+- Quem não clicou não recebe a transmissão, então ela só gasta a internet e a placa de vídeo de quem transmite pra quem está assistindo.
+- Dá pra parar de assistir pelo botão no canto da transmissão. Quando ela acaba, a próxima volta a pedir o clique.
+- Quem transmite vê quantas pessoas estão assistindo.
+
+**Página de apresentação separada do app** ([#26](https://github.com/antonioinaciodev/simple-call/pull/26))
+
+- No navegador, o endereço principal virou uma página de apresentação, como a de outros apps: o que é o Simple Call, uma imagem dele, o que ele tem e os downloads, com os botões **Baixar** (pro seu sistema) e **Abrir no navegador**.
+- O app no navegador fica em `/app`, só com criar e entrar na call. Os links de call continuam iguais, e os apps instalados continuam abrindo direto no app.
+
+**Atualização dentro do app** ([#27](https://github.com/antonioinaciodev/simple-call/pull/27))
+
+- Quando sai uma versão nova, os apps mostram "Versão X disponível" com o botão **Atualizar**.
+- Windows: o app baixa, instala e abre de novo sozinho, sem precisar passar pelo instalador.
+- Android: o app baixa e abre o instalador do Android. Na primeira vez ele pede pra permitir instalar apps do Simple Call.
+- O arquivo baixado é conferido com o hash que o GitHub publica antes de instalar.
+- Quem ainda está com o app 0.5 vê o mesmo aviso, que abre o download no navegador. Da 0.6 em diante a atualização é por dentro.
+
+**Animações, sons e celular** ([#28](https://github.com/antonioinaciodev/simple-call/pull/28))
+
+- Animações curtas (até 200 ms, só opacidade e movimento leve): quadros de quem entra, painel do chat e dos ajustes, menus, mensagens novas e botões que afundam de leve no clique. Quem desliga animações no sistema não vê nenhuma.
+- Sons novos, curtos e baixos: câmera ligando e desligando, transmissão começando e parando, mensagem nova com o chat fechado e um toque leve nos botões. Tudo desliga junto em Ajustes → Sons.
+- Celular em pé: os quadros ficam um embaixo do outro, maiores, em vez de lado a lado.
+- Celular: o chat e os ajustes ocupam a tela da call sem ficar por cima dos botões, e o botão de convidar voltou (só o ícone).
 
 ## v0.5.1 (31/10/2026)
 

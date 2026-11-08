@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { SetPrefs } from '../App';
+import { APP_HOME } from '../lib/native';
 import type { Prefs } from '../lib/prefs';
 import { Call } from './Call';
 import { PreJoin } from './PreJoin';
@@ -21,7 +22,7 @@ export function RoomPage({ code, prefs, setPrefs, navigate }: Props) {
   }
 
   if (stage.kind === 'prejoin') {
-    return <PreJoin code={code} prefs={prefs} setPrefs={setPrefs} onJoin={join} onBack={() => navigate('/')} />;
+    return <PreJoin code={code} prefs={prefs} setPrefs={setPrefs} onJoin={join} onBack={() => navigate(APP_HOME)} />;
   }
   if (stage.kind === 'call') {
     return (
@@ -42,7 +43,7 @@ export function RoomPage({ code, prefs, setPrefs, navigate }: Props) {
           <button className="btn primary" onClick={() => setStage({ kind: 'prejoin' })}>
             Voltar pra call
           </button>
-          <button className="btn" onClick={() => navigate('/')}>
+          <button className="btn" onClick={() => navigate(APP_HOME)}>
             Início
           </button>
         </div>

@@ -8,14 +8,12 @@ export interface DesktopSource {
 }
 
 // Áudio da transmissão no app desktop.
-// none: sem áudio · app: só o programa da janela escolhida (Windows) · system: PC inteiro menos a call
-// (Windows) · stream: um app da lista de apps tocando (Linux).
-export type DesktopAudioChoice = { mode: 'none' } | { mode: 'app' } | { mode: 'system' } | { mode: 'stream'; streamId: string };
+// none: sem áudio · app: só o programa da janela escolhida · system: PC inteiro menos a call.
+export type DesktopAudioChoice = { mode: 'none' } | { mode: 'app' } | { mode: 'system' };
 
 export interface DesktopAudioSupport {
   app: boolean;
   system: boolean;
-  streams: boolean;
 }
 
 interface DesktopBridge {
@@ -27,10 +25,13 @@ interface DesktopBridge {
   selectSource: (id: string, name: string, audio: boolean | DesktopAudioChoice) => Promise<boolean>;
   // Da versão 0.2 do app em diante (instalações antigas não têm).
   audioSupport?: () => Promise<DesktopAudioSupport | null>;
-  audioApps?: () => Promise<{ id: string; name: string }[]>;
   startAudio?: () => Promise<{ ok: boolean; error?: string }>;
   stopAudio?: () => Promise<void>;
   onAudio?: (onData: (chunk: Uint8Array) => void, onEnd: () => void) => () => void;
+  // Da versão 0.6 do app em diante: atualizar de dentro do app (apps/desktop/src/update.ts).
+  appVersion?: () => Promise<string | null>;
+  installUpdate?: (version: string) => Promise<{ ok: boolean; error?: string }>;
+  onUpdateProgress?: (fn: (pct: number) => void) => () => void;
 }
 
 // Exposto pelo preload do app desktop (apps/desktop/src/preload.ts).
@@ -55,7 +56,7 @@ interface CallAudioPlugin {
 
 // O Capacitor injeta window.Capacitor na página quando ela abre dentro do app.
 const capPlatform = (globalThis as { Capacitor?: { getPlatform?: () => string } }).Capacitor?.getPlatform?.();
-export const mobilePlatform = capPlatform === 'android' || capPlatform === 'ios' ? capPlatform : null;
+export const mobilePlatform = capPlatform === 'android' ? capPlatform : null;
 
 // ---------- barras do sistema (celular) ----------
 
@@ -65,7 +66,7 @@ let bars: Promise<{ plugin: CapacitorCore['SystemBars']; type: CapacitorCore['Sy
 let barsFullscreen = false;
 
 // No app do celular a barra de cima (hora, bateria) fica escondida o tempo todo; na tela cheia
-// da transmissão some também a de baixo (navegação no Android, indicador de início no iPhone).
+// da transmissão some também a de baixo (navegação).
 // Puxando da borda elas aparecem por um instante.
 function applyBars() {
   if (!mobilePlatform) return;
@@ -102,18 +103,20 @@ if (mobilePlatform) {
 // Aberto dentro de um dos apps (desktop ou celular)?
 export const inApp = !!desktop || !!mobilePlatform;
 
-// Sistemas que têm app.
-export type Os = 'windows' | 'linux' | 'android' | 'ios';
+// Sistemas que têm app. Nos outros (Linux, iPhone, Mac) o Simple Call funciona no navegador.
+export type Os = 'windows' | 'android';
 
 // Sistema de quem está vendo a página, pra oferecer o app certo.
 export function detectOs(): Os | null {
   const ua = navigator.userAgent;
   if (/Android/i.test(ua)) return 'android';
-  if (/iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return 'ios';
   if (/Windows/.test(ua)) return 'windows';
-  if (/Linux|X11|CrOS/.test(ua) && !/Mac OS X/.test(ua)) return 'linux';
   return null;
 }
+
+// Início do app: no navegador a raiz é a página de apresentação e o app fica em /app; dentro dos
+// apps instalados (que abrem a raiz do site) a raiz já é o app.
+export const APP_HOME = inApp ? '/' : '/app';
 
 // Endereço que abre a call no app instalado (o app registra o simplecall:// no sistema).
 // Do navegador, é o único jeito de abrir o app de PC; no Android o link https já abre sozinho.

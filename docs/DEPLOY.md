@@ -29,7 +29,8 @@ A versão no ar hoje: https://simplecall.antonioinaciodev.workers.dev
 5. **Deploy**. Em uns 2 minutos o app fica em `https://simplecall.SEU-SUBDOMINIO.workers.dev`. Na primeira vez a Cloudflare pede pra escolher esse subdomínio.
 6. Se o endereço não abrir, vá no Worker `simplecall` → **Settings → Domains & Routes** e ative o **workers.dev**.
 
-Cada merge no `main` publica a versão nova sozinho.
+Cada merge no `main` publica a versão nova sozinho. A branch `dev` não mexe no site de todo mundo
+(veja [Site de teste da dev](#site-de-teste-da-dev)).
 
 Os nomes dos menus da Cloudflare mudam de vez em quando; se algo não bater, procure por "Workers" e "Import a repository".
 
@@ -53,6 +54,24 @@ Tem **1.000 GB grátis por mês**, mas a Cloudflare pede um cartão de crédito 
 ### Opção B: Metered (sem cartão)
 
 A [Metered](https://www.metered.ca/stun-turn) tem um plano grátis de TURN que não pede cartão. O app **ainda não suporta** esse caso: precisa de uma mudança pequena no `apps/worker/src/index.ts` pra buscar as credenciais da Metered em vez das da Cloudflare. Fica pra quando alguém realmente precisar.
+
+## Site de teste da dev
+
+As novidades entram primeiro na branch `dev`. Pra testar antes de lançar, a `dev` pode ter um site
+próprio, `https://simplecall-dev.SEU-SUBDOMINIO.workers.dev`: o mesmo código num Worker separado
+(`env.dev` do `wrangler.jsonc`), com as calls dele. Pra ligar (uma vez só):
+
+1. No Worker `simplecall` → **Settings → Build**, ative **Non-production branch builds** (ou
+   "Builds for non-production branches").
+2. Em **Non-production branch deploy command**, troque o que estiver lá por
+   `npx pnpm@10 run deploy:branch`. O build command fica o mesmo.
+3. Salve. No próximo push na `dev`, a Cloudflare cria o Worker `simplecall-dev` sozinha. Se o
+   endereço não abrir, ative o **workers.dev** dele em **Settings → Domains & Routes**.
+
+O `deploy:branch` (`apps/worker/deploy-branch.mjs`) só publica quando a branch é `dev`; nas outras
+branches a Cloudflare só confere se o build passa. Os apps continuam abrindo o site da `main`.
+
+Sem ligar isso, nada quebra: a `dev` só não tem site, e dá pra testar no PC com `npx pnpm@10 dev`.
 
 ## Deploy pelo seu PC (alternativa)
 

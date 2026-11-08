@@ -37,6 +37,10 @@ export interface Peer {
   micOn: boolean;
   deafened: boolean;
   stateKnown: boolean;
+  // Se ela está transmitindo a tela (undefined: versão antiga do site, que manda a transmissão
+  // pra todo mundo sem perguntar) e se ela pediu pra assistir a minha.
+  sharing?: boolean;
+  wantsScreen: boolean;
   // Já chegou a conectar alguma vez (pra saber se "conectando" é reconexão) e a próxima espera
   // pra tentar reconectar o ICE, que dobra a cada tentativa sem sucesso.
   wasConnected: boolean;
@@ -52,7 +56,7 @@ export interface Peer {
 }
 
 // Mudanças nas outras pessoas que viram som na call.
-export type PeerEvent = 'join' | 'leave' | 'mute' | 'unmute' | 'deafen' | 'undeafen';
+export type PeerEvent = 'join' | 'leave' | 'mute' | 'unmute' | 'deafen' | 'undeafen' | 'stream';
 
 export interface RemoteMedia {
   mic?: MediaStreamTrack;
@@ -91,7 +95,8 @@ type ServerMsg =
 type SignalData = { description: RTCSessionDescriptionInit } | { candidate: RTCIceCandidateInit } | { reset: true } | { restart: true };
 
 type PeerMsg =
-  | { type: 'state'; micOn: boolean; deafened?: boolean; kinds: Record<string, MediaKind>; hwDecode?: string[] }
+  // sharing: estou transmitindo · watch: quero assistir a sua transmissão.
+  | { type: 'state'; micOn: boolean; deafened?: boolean; kinds: Record<string, MediaKind>; hwDecode?: string[]; sharing?: boolean; watch?: boolean }
   | { type: 'chat'; id: string; text: string; timestamp: number };
 
 const CAMERA_ENCODING: RTCRtpEncodingParameters = { maxBitrate: 1_200_000, maxFramerate: 30 };
@@ -137,6 +142,8 @@ export class Mesh {
   private ping: ReturnType<typeof setInterval>;
   private adapt: ReturnType<typeof setInterval>;
   private hw: HardwareCodecs | null = null;
+  // De quem eu estou assistindo a transmissão (pelo id, pra valer de novo se a conexão recomeçar).
+  private watching = new Set<string>();
 
   constructor(private opts: Options) {
     this.connect();
@@ -289,10 +296,12 @@ export class Mesh {
     this.screen?.getTracks().forEach((t) => t.stop());
     this.screen = stream;
     this.screenPreset = preset;
+    // A transmissão só vai pra quem clicar em Assistir: aqui só avisa que ela começou.
     for (const p of this.peers.values()) {
       this.attach(p, 'screen');
       this.attach(p, 'screenAudio');
     }
+    this.broadcastState();
     this.opts.onChange();
     return { audioError };
   }
@@ -304,10 +313,13 @@ export class Mesh {
     this.screen.getTracks().forEach((t) => t.stop());
     this.screen = null;
     this.screenPreset = null;
+    // A próxima transmissão começa sem ninguém assistindo de novo.
     for (const p of this.peers.values()) {
+      p.wantsScreen = false;
       this.attach(p, 'screen');
       this.attach(p, 'screenAudio');
     }
+    this.broadcastState();
     this.opts.onChange();
   }
 
@@ -323,6 +335,28 @@ export class Mesh {
       void this.tune(p, 'mic');
       if (dtxChanged) this.enqueue(p, () => this.offer(p));
     }
+  }
+
+  // Quantas pessoas estão assistindo a minha transmissão.
+  get viewers() {
+    let n = 0;
+    for (const p of this.peers.values()) if (p.wantsScreen) n++;
+    return n;
+  }
+
+  // Começa ou para de assistir a transmissão de alguém. Sem assistir, ela nem é enviada pra cá:
+  // não gasta a banda de quem transmite nem a placa de vídeo daqui.
+  setWatching(peer: Peer, on: boolean) {
+    if (on === this.watching.has(peer.id)) return;
+    if (on) this.watching.add(peer.id);
+    else this.watching.delete(peer.id);
+    this.sendState(peer);
+    this.opts.onChange();
+  }
+
+  // Estou vendo a transmissão dessa pessoa? (Versão antiga do site manda sem perguntar.)
+  isWatching(peer: Peer) {
+    return peer.sharing === undefined || this.watching.has(peer.id);
   }
 
   sendChat(text: string) {
@@ -342,6 +376,11 @@ export class Mesh {
       // Vídeo "mudo" é faixa sem quadros ainda (acabou de ligar): não vale mostrar tela preta.
       if (track.kind === 'video' && track.muted) continue;
       out[kind] = track;
+    }
+    // Parei de assistir: some na hora, sem esperar a renegociação desligar a faixa.
+    if (!this.isWatching(peer)) {
+      delete out.screen;
+      delete out.screenAudio;
     }
     return out;
   }
@@ -369,7 +408,15 @@ export class Mesh {
   private sendState(peer: Peer) {
     const kinds: Record<string, MediaKind> = {};
     for (const [kind, tx] of Object.entries(peer.sending)) if (tx.mid) kinds[tx.mid] = kind as MediaKind;
-    this.sendPeer(peer, { type: 'state', micOn: !!this.mic, deafened: this.deafened, kinds, hwDecode: this.hw?.decode });
+    this.sendPeer(peer, {
+      type: 'state',
+      micOn: !!this.mic,
+      deafened: this.deafened,
+      kinds,
+      hwDecode: this.hw?.decode,
+      sharing: !!this.screen,
+      watch: this.watching.has(peer.id),
+    });
   }
 
   private onServer(msg: ServerMsg) {
@@ -387,6 +434,7 @@ export class Mesh {
           if (!peer) break;
           peer.pc.close();
           this.peers.delete(msg.id);
+          this.watching.delete(msg.id);
           this.opts.onPeerEvent('leave');
           this.opts.onChange();
         }
@@ -417,6 +465,7 @@ export class Mesh {
     // começo do zero como quem acabou de chegar.
     for (const p of this.peers.values()) p.pc.close();
     this.peers.clear();
+    this.watching.clear();
     this.joined = true;
     // Quem chega é o "educado" com quem já estava: as conexões ficam simétricas e sem impasse.
     for (const p of msg.peers) this.addPeer(p.id, p.name, true);
@@ -431,6 +480,7 @@ export class Mesh {
       if (ids.has(peer.id)) continue;
       peer.pc.close();
       this.peers.delete(peer.id);
+      this.watching.delete(peer.id);
       this.opts.onPeerEvent('leave');
     }
     // Quem entrou nesse meio tempo me viu na lista e espera minha oferta, como com qualquer novato.
@@ -451,7 +501,7 @@ export class Mesh {
 
   private addPeer(id: string, name: string, polite: boolean, retry = STUCK_MS) {
     const pc = new RTCPeerConnection({ iceServers: this.opts.iceServers, bundlePolicy: 'max-bundle' });
-    const peer: Peer = { id, name, pc, dc: null, polite, ignoreOffer: false, queue: Promise.resolve(), sending: {}, remoteKinds: {}, micOn: true, deafened: false, stateKnown: false, wasConnected: false, restartDelay: RESTART_MS, lastRestart: 0, screenScale: 1, growSince: 0, screenSince: 0 };
+    const peer: Peer = { id, name, pc, dc: null, polite, ignoreOffer: false, queue: Promise.resolve(), sending: {}, remoteKinds: {}, micOn: true, deafened: false, stateKnown: false, wantsScreen: false, wasConnected: false, restartDelay: RESTART_MS, lastRestart: 0, screenScale: 1, growSince: 0, screenSince: 0 };
     this.peers.set(id, peer);
 
     // Canal de dados (estado e chat): só quem já estava na call cria; quem chega recebe pronto.
@@ -557,6 +607,19 @@ export class Mesh {
       peer.deafened = deafened;
       peer.remoteKinds = msg.kinds;
       if (Array.isArray(msg.hwDecode)) peer.hwDecode = msg.hwDecode.filter((c) => typeof c === 'string');
+      if (typeof msg.sharing === 'boolean') {
+        if (msg.sharing && peer.sharing === false) this.opts.onPeerEvent('stream');
+        // Acabou a transmissão: a próxima também espera o clique em Assistir.
+        if (!msg.sharing) this.watching.delete(peer.id);
+        peer.sharing = msg.sharing;
+      }
+      // Ela pediu (ou parou) pra assistir a minha transmissão: só então a tela vai pra ela.
+      const wants = !!msg.watch && !!this.screen;
+      if (wants !== peer.wantsScreen) {
+        peer.wantsScreen = wants;
+        this.attach(peer, 'screen');
+        this.attach(peer, 'screenAudio');
+      }
       this.opts.onChange();
     } else if (msg.type === 'chat' && typeof msg.text === 'string') {
       this.opts.onChat({
@@ -624,7 +687,8 @@ export class Mesh {
 
   // Liga, troca ou desliga o envio de um tipo de mídia pra uma pessoa.
   private attach(peer: Peer, kind: MediaKind) {
-    const track = this.localTrack(kind);
+    const isScreen = kind === 'screen' || kind === 'screenAudio';
+    const track = isScreen && !peer.wantsScreen ? null : this.localTrack(kind);
     const tx = peer.sending[kind];
     const usable = tx && tx.currentDirection !== 'stopped';
 

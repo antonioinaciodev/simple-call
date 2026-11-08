@@ -18,5 +18,15 @@
   },
   // Durable Objects com SQLite são os que entram no plano grátis.
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }],
-  "observability": { "enabled": true }
+  "observability": { "enabled": true },
+  // Site de teste da branch dev (simplecall-dev.*.workers.dev): o mesmo código, num Worker
+  // separado, com as calls dele. Publicado por apps/worker/deploy-branch.mjs.
+  "env": {
+    "dev": {
+      "name": "simplecall-dev",
+      "durable_objects": {
+        "bindings": [{ "name": "ROOMS", "class_name": "Room" }]
+      }
+    }
+  }
 }
