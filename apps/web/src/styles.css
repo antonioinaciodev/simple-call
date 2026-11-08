@@ -135,7 +135,7 @@ p {
   background: var(--surface-2);
   cursor: pointer;
   white-space: nowrap;
-  transition: background 120ms, border-color 120ms;
+  transition: background 120ms, border-color 120ms, transform 90ms;
 }
 
 .btn:hover:not(:disabled) {
@@ -205,7 +205,13 @@ select.input {
   border: 1px solid var(--border);
   background: var(--surface-2);
   cursor: pointer;
-  transition: background 120ms, color 120ms, border-color 120ms;
+  transition: background 120ms, color 120ms, border-color 120ms, transform 90ms;
+}
+
+/* Afundar de leve ao clicar: resposta na hora, sem esperar nada. */
+.icon-btn:active:not(:disabled),
+.btn:active:not(:disabled) {
+  transform: scale(0.95);
 }
 
 .icon-btn:hover:not(:disabled) {
@@ -256,6 +262,7 @@ select.input {
 }
 
 .badge {
+  animation: zoom-in 200ms cubic-bezier(0.3, 1.6, 0.5, 1);
   position: absolute;
   top: 6px;
   right: 6px;
@@ -841,6 +848,7 @@ select.input {
 }
 
 .tile {
+  animation: zoom-in 200ms cubic-bezier(0.2, 0.7, 0.2, 1);
   position: relative;
   min-width: 0;
   min-height: 0;
@@ -1082,10 +1090,54 @@ select.input {
   }
 }
 
+/* Animações curtas da interface (entrar alguém, abrir painel, menus). Todas abaixo de 200 ms
+   e só com opacidade e transform, que a placa de vídeo faz sem custo. */
+@keyframes zoom-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+}
+
+@keyframes rise-small {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+/* Popover e aviso centralizados com translateX(-50%): a animação mantém o centro. */
+@keyframes pop-up {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 6px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .tile.stream-in video,
-  .pulse {
+  .pulse,
+  .tile,
+  .toast,
+  .popover,
+  .modal,
+  .modal-backdrop,
+  .panel-inner,
+  .message,
+  .badge {
     animation: none;
+  }
+
+  .icon-btn:active:not(:disabled),
+  .btn:active:not(:disabled) {
+    transform: none;
   }
 }
 
@@ -1125,6 +1177,10 @@ select.input {
   justify-content: flex-end;
 }
 
+.copy-compact {
+  display: none;
+}
+
 .live-tag {
   font-family: ui-monospace, Menlo, monospace;
   margin-right: 6px;
@@ -1132,6 +1188,7 @@ select.input {
 }
 
 .toast {
+  animation: pop-up 180ms ease-out;
   position: absolute;
   bottom: calc(100% + 8px);
   left: 50%;
@@ -1151,6 +1208,7 @@ select.input {
 }
 
 .popover {
+  animation: pop-up 140ms ease-out;
   position: absolute;
   bottom: calc(100% + 12px);
   left: 50%;
@@ -1233,6 +1291,7 @@ select.input {
 /* ---------- seletor de tela do app desktop ---------- */
 
 .modal-backdrop {
+  animation: fade-in 120ms ease-out;
   position: fixed;
   inset: 0;
   z-index: 50;
@@ -1243,6 +1302,7 @@ select.input {
 }
 
 .modal {
+  animation: zoom-in 160ms cubic-bezier(0.2, 0.7, 0.2, 1);
   width: min(440px, 100%);
   max-height: min(560px, calc(100vh - 32px));
   display: flex;
@@ -1387,6 +1447,7 @@ select.input {
 }
 
 .panel-inner {
+  animation: slide-in 180ms cubic-bezier(0.2, 0.7, 0.2, 1);
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -1415,6 +1476,7 @@ select.input {
 
 .message {
   margin-top: 10px;
+  animation: rise-small 160ms ease-out;
 }
 
 .message.grouped {
@@ -1524,17 +1586,22 @@ select.input {
     gap: 24px;
   }
 
+  /* Painel aberto no celular: ocupa o lugar da call (que continua tocando por trás). */
   .call.with-panel {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: 'top' 'stage' 'controls';
+    grid-template-areas: 'top' 'panel' 'controls';
+  }
+
+  .call.with-panel .stage-wrap {
+    display: none;
   }
 
   .panel {
-    position: fixed;
-    inset: 0 0 76px 0;
-    padding: 8px;
-    z-index: 20;
-    background: var(--bg);
+    padding: 8px 12px 0;
+  }
+
+  .stage-wrap {
+    padding: 8px 12px;
   }
 
   .focus-layout {
@@ -1559,6 +1626,15 @@ select.input {
 
   .controls-side:first-child {
     display: none;
+  }
+
+  .copy-compact {
+    display: inline-grid;
+  }
+
+  .controls {
+    gap: 10px;
+    padding: 8px 12px 12px;
   }
 
   .controls-main {

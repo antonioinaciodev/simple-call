@@ -34,6 +34,8 @@ interface Props {
   toggleStats: () => void;
   onLeave: () => void;
   toast: string;
+  // Som curtinho de clique (os botões que já têm som próprio não usam).
+  tap: () => void;
 }
 
 // Celular (navegador ou app) não tem como transmitir a tela: o botão nem aparece.
@@ -42,7 +44,7 @@ const canShareScreen = typeof navigator.mediaDevices?.getDisplayMedia === 'funct
 const isTyping = (el: EventTarget | null) =>
   el instanceof HTMLElement && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
 
-export function ControlBar({ mesh, actions, prefs, setPrefs, panel, setPanel, unread, showStats, toggleStats, onLeave, toast }: Props) {
+export function ControlBar({ mesh, actions, prefs, setPrefs, panel, setPanel, unread, showStats, toggleStats, onLeave, toast, tap }: Props) {
   const [shareOpen, setShareOpen] = useState(false);
   // No app desktop a tela ou janela é escolhida no seletor do próprio app.
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -52,7 +54,10 @@ export function ControlBar({ mesh, actions, prefs, setPrefs, panel, setPanel, un
   const isCameraEnabled = !!mesh.camera;
   const isScreenShareEnabled = !!mesh.screen;
 
-  const togglePanel = (p: Exclude<Panel, null>) => setPanel(panel === p ? null : p);
+  const togglePanel = (p: Exclude<Panel, null>) => {
+    tap();
+    setPanel(panel === p ? null : p);
+  };
 
   // Atalhos: M mic, D som da call, V câmera, S tela, C chat. Ignorados enquanto digita.
   useEffect(() => {
@@ -73,7 +78,7 @@ export function ControlBar({ mesh, actions, prefs, setPrefs, panel, setPanel, un
   return (
     <footer className="controls">
       <div className="controls-side">
-        <CopyLinkButton label="Convidar" />
+        <CopyLinkButton label="Convidar" onCopy={tap} />
       </div>
 
       <div className="controls-main">
@@ -105,7 +110,11 @@ export function ControlBar({ mesh, actions, prefs, setPrefs, panel, setPanel, un
           <div className="popover-anchor">
             <button
               className={`icon-btn ${isScreenShareEnabled ? 'active' : ''}`}
-              onClick={() => (isScreenShareEnabled ? stopShare() : setShareOpen((o) => !o))}
+              onClick={() => {
+                if (isScreenShareEnabled) return stopShare();
+                tap();
+                setShareOpen((o) => !o);
+              }}
               title={isScreenShareEnabled ? 'Parar transmissão (S)' : 'Transmitir tela (S)'}
               aria-pressed={isScreenShareEnabled}
             >
@@ -131,10 +140,15 @@ export function ControlBar({ mesh, actions, prefs, setPrefs, panel, setPanel, un
       </div>
 
       <div className="controls-side right">
+        {/* No celular o "Convidar" da esquerda some: aqui fica só o ícone. */}
+        <CopyLinkButton label="Convidar" onCopy={tap} compact />
         {mesh.screenPreset && <span className="muted small live-tag">AO VIVO · {mesh.screenPreset.label}</span>}
         <button
           className={`icon-btn small ${showStats ? 'active' : ''}`}
-          onClick={toggleStats}
+          onClick={() => {
+            tap();
+            toggleStats();
+          }}
           title="Estatísticas da conexão"
           aria-pressed={showStats}
         >

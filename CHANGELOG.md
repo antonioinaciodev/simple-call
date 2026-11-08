@@ -10,7 +10,7 @@ Cada PR que entra na `dev` escreve o que mudou em "Próxima versão". Ao lançar
 Os instaladores de cada versão estão nas [Releases](https://github.com/antonioinaciodev/simple-call/releases).
 Pra publicar uma versão nova, veja [docs/APPS.md](docs/APPS.md#gerar-uma-release).
 
-## Próxima versão
+## v0.6.0 (08/11/2026)
 
 **Branch dev e apps só pra Windows e Android** ([#24](https://github.com/antonioinaciodev/simple-call/pull/24))
 
@@ -37,6 +37,13 @@ Pra publicar uma versão nova, veja [docs/APPS.md](docs/APPS.md#gerar-uma-releas
 - Android: o app baixa e abre o instalador do Android. Na primeira vez ele pede pra permitir instalar apps do Simple Call.
 - O arquivo baixado é conferido com o hash que o GitHub publica antes de instalar.
 - Quem ainda está com o app 0.5 vê o mesmo aviso, que abre o download no navegador. Da 0.6 em diante a atualização é por dentro.
+
+**Animações, sons e celular** ([#28](https://github.com/antonioinaciodev/simple-call/pull/28))
+
+- Animações curtas (até 200 ms, só opacidade e movimento leve): quadros de quem entra, painel do chat e dos ajustes, menus, mensagens novas e botões que afundam de leve no clique. Quem desliga animações no sistema não vê nenhuma.
+- Sons novos, curtos e baixos: câmera ligando e desligando, transmissão começando e parando, mensagem nova com o chat fechado e um toque leve nos botões. Tudo desliga junto em Ajustes → Sons.
+- Celular em pé: os quadros ficam um embaixo do outro, maiores, em vez de lado a lado.
+- Celular: o chat e os ajustes ocupam a tela da call sem ficar por cima dos botões, e o botão de convidar voltou (só o ícone).
 
 ## v0.5.1 (31/10/2026)
 
