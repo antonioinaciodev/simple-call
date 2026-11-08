@@ -68,6 +68,10 @@ perder, as próximas versões vão exigir desinstalar o app antes de instalar.
 Sem esses segredos o workflow ainda gera um APK, mas assinado com uma chave temporária: serve pra
 testar, mas cada versão vai pedir pra desinstalar a anterior.
 
+A impressão digital dessa chave também está em `apps/worker/src/index.ts` (`ASSET_LINKS`): é o que
+faz o link de convite abrir direto no app Android. Se um dia trocar a chave, atualize lá também
+(`keytool -list -v -keystore simplecall.jks` mostra a linha `SHA256`).
+
 ## iOS
 
 Duas limitações da Apple, que não dependem do código:
@@ -127,6 +131,18 @@ No Android Studio, ligue o celular com a depuração USB ativada e clique em ▶
   (`CallAudioPlugin.java` e `CallAudioPlugin.swift`) lista e troca a saída de áudio e, no Android,
   liga o `CallService` (serviço com notificação que o Android exige pra usar o mic em segundo plano).
   `www/index.html` é a tela de "sem conexão".
+- **Link de convite:** cada sistema abre o app de um jeito.
+  - **Android:** o link `https://.../abc-defg-hij` abre direto no app (App Links). O
+    `AndroidManifest.xml` declara o domínio e o site responde `/.well-known/assetlinks.json` com a
+    impressão digital da chave do APK; o Android confere isso ao instalar. O `MainActivity.java`
+    recebe o link e abre a call no WebView.
+  - **Windows e Linux:** navegador de PC não repassa link https pra app nenhum, então o app registra
+    o endereço `simplecall://` (no Windows ao abrir o app, sem administrador; no Linux pelo atalho do
+    `.deb`). A página da call no navegador mostra "Abrir no app", que vai pra
+    `simplecall://abc-defg-hij`; o navegador pergunta se pode abrir o Simple Call e o `main.ts`
+    leva pra call, inclusive com o app já aberto.
+  - **iOS:** o mesmo `simplecall://` (Info.plist e `SceneDelegate.swift`). O link https direto
+    (Universal Links) precisaria da conta paga da Apple.
 - **Site** (`apps/web/src/lib/native.ts`): detecta se está dentro de um app e usa essas pontes. No
   navegador nada muda. Dentro dos apps a página inicial mostra só a entrada da call (sem os
   downloads), e a abertura animada fica no `apps/web/index.html`, em CSS puro, pra aparecer antes
@@ -139,4 +155,9 @@ No Android Studio, ligue o celular com a depuração USB ativada e clique em ▶
 - **Rodando o app pelo código (`start`)** no Windows, a captura de áudio só funciona se você
   compilar `native/win-audio.cpp` (precisa do Visual Studio); no instalador ela já vem pronta.
 - **Transmitir a tela pelo celular** não é possível no WebView; o botão nem aparece no celular.
+- **"Abrir no app" no AppImage:** o `simplecall://` só fica registrado no `.deb`. O AppImage não
+  instala atalho no sistema (a não ser com o AppImageLauncher).
+- **Link de convite no Android:** vale a partir do app 0.5. Se o Android não conseguiu conferir o
+  site na instalação (sem internet, por exemplo), o link abre no navegador; dá pra ligar na mão em
+  **Configurações → Apps → Simple Call → Abrir por padrão**.
 - **macOS:** dá pra gerar, mas ficou de fora por enquanto (vocês usam Windows e Linux).

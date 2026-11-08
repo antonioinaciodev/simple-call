@@ -14,6 +14,11 @@ files:
 npmRebuild: false
 nodeGypRebuild: false
 asar: true
+# Endereço dos links de convite (botão "Abrir no app" do site). No Linux vai pro atalho
+# (.desktop) do .deb; no Windows o próprio app registra ao abrir (main.ts).
+protocols:
+  - name: Simple Call
+    schemes: [simplecall]
 electronLanguages: [pt-BR, en-US]
 
 win:

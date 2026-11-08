@@ -1,6 +1,7 @@
 import { ArrowLeft, Mic, MicOff, Video, VideoOff } from 'lucide-react';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { SetPrefs } from '../App';
+import { appLink, detectOs, inApp } from '../lib/native';
 import type { Prefs } from '../lib/prefs';
 import { CopyLinkButton } from './CopyLinkButton';
 
@@ -146,6 +147,11 @@ export function PreJoin({ code, prefs, setPrefs, onJoin, onBack }: Props) {
             <ArrowLeft size={16} />
             Voltar ao início
           </button>
+          {!inApp && detectOs() && (
+            <p className="open-in-app muted small">
+              Tem o app? <a href={appLink(code)}>Abrir no app</a>
+            </p>
+          )}
           {camError && <p className="error">{camError}</p>}
           {micError && <p className="error">{micError}</p>}
           {error && <p className="error">{error}</p>}

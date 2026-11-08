@@ -1,12 +1,10 @@
 import { Code2, Download, Link2, MonitorPlay, Radio, Volume2 } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { createRoom, parseRoomCode } from '../lib/api';
-import { desktop, mobilePlatform } from '../lib/native';
+import { detectOs, inApp, type Os } from '../lib/native';
 
 const REPO = 'https://github.com/antonioinaciodev/simple-call';
 const latest = (file: string) => `${REPO}/releases/latest/download/${file}`;
-
-type Os = 'windows' | 'linux' | 'android' | 'ios';
 
 const DOWNLOADS: { os: Os; name: string; short: string; note: string; files: { label: string; file: string }[] }[] = [
   {
@@ -49,19 +47,7 @@ const FEATURES = [
   { icon: Volume2, title: 'Só o som do jogo', text: 'No app de PC, quem assiste ouve o jogo sem ouvir as vozes da call de volta.' },
 ];
 
-// Sistema de quem está vendo a página, pra oferecer o download certo primeiro.
-function detectOs(): Os | null {
-  const ua = navigator.userAgent;
-  if (/Android/i.test(ua)) return 'android';
-  if (/iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return 'ios';
-  if (/Windows/.test(ua)) return 'windows';
-  if (/Linux|X11|CrOS/.test(ua) && !/Mac OS X/.test(ua)) return 'linux';
-  return null;
-}
-
 // Dentro dos apps a página é só a entrada da call; no navegador ela também apresenta o app.
-const inApp = !!desktop || !!mobilePlatform;
-
 export function Home({ navigate }: { navigate: (to: string) => void }) {
   const [input, setInput] = useState('');
   const [error, setError] = useState('');

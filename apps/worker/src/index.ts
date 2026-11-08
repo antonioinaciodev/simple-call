@@ -31,9 +31,26 @@ async function iceServers(env: Env) {
   }
 }
 
+// Prova pro Android que o app é deste site: com ela, o link de convite abre direto no app
+// em vez do navegador (App Links). É a impressão digital (SHA-256) da chave que assina o APK.
+const ASSET_LINKS = [
+  {
+    relation: ['delegate_permission/common.handle_all_urls'],
+    target: {
+      namespace: 'android_app',
+      package_name: 'dev.antonioinacio.simplecall',
+      sha256_cert_fingerprints: ['66:27:14:6A:86:F3:D5:7E:06:DB:2A:2A:E7:28:47:7C:A2:4A:4C:44:3E:C0:5F:D6:CB:87:A6:7E:D7:9D:8C:87'],
+    },
+  },
+];
+
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const url = new URL(req.url);
+
+    if (url.pathname === '/.well-known/assetlinks.json') {
+      return Response.json(ASSET_LINKS, { headers: { 'Cache-Control': 'public, max-age=3600' } });
+    }
 
     if (url.pathname === '/api/health') return Response.json({ ok: true });
 
