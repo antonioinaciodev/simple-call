@@ -10,10 +10,6 @@
   "android": {
     "allowMixedContent": false
   },
-  "ios": {
-    "contentInset": "never",
-    "backgroundColor": "#0a0a0a"
-  },
   "plugins": {
     "SystemBars": {
       "style": "DARK"

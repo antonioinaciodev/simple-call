@@ -14,8 +14,8 @@ files:
 npmRebuild: false
 nodeGypRebuild: false
 asar: true
-# Endereço dos links de convite (botão "Abrir no app" do site). No Linux vai pro atalho
-# (.desktop) do .deb; no Windows o próprio app registra ao abrir (main.ts).
+# Endereço dos links de convite (botão "Abrir no app" do site). O próprio app registra no
+# Windows ao abrir (main.ts).
 protocols:
   - name: Simple Call
     schemes: [simplecall]
@@ -36,17 +36,3 @@ nsis:
   shortcutName: Simple Call
   artifactName: SimpleCall-Windows.${ext}
 
-linux:
-  target: [AppImage, deb]
-  category: Network
-  icon: build/icon.png
-  executableName: simplecall
-  synopsis: Chamadas pra jogar e transmitir com os amigos
-  desktop:
-    entry:
-      Name: Simple Call
-      StartupWMClass: Simple Call
-appImage:
-  artifactName: SimpleCall-Linux.${ext}
-deb:
-  artifactName: SimpleCall-Linux.${ext}

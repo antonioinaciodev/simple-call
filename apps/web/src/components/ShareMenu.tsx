@@ -12,12 +12,12 @@ const AUDIO_HINT =
   desktop?.platform === 'win32'
     ? 'Vai o áudio de tudo que toca no PC, inclusive as vozes da call. Baixe a versão nova do app pra mandar só o áudio do jogo.'
     : /Linux/.test(navigator.userAgent) && !/Android/.test(navigator.userAgent)
-      ? 'No Linux o navegador só envia o áudio de uma aba do Chrome. Pra mandar o áudio do jogo, use o app desktop.'
+      ? 'No Linux o navegador só envia o áudio de uma aba do Chrome.'
       : /Mac/.test(navigator.userAgent)
         ? 'No macOS o áudio do sistema precisa do Chrome 141+ e macOS 14.2+.'
         : 'No Windows o áudio do sistema só vai junto ao escolher "Tela inteira". O app desktop manda só o áudio do jogo.';
 
-// App desktop antigo (0.1) no Linux: sem áudio.
+// App desktop antigo (0.1) fora do Windows: sem áudio.
 const CAN_SHARE_AUDIO = !desktop || desktop.platform === 'win32';
 
 interface Props {
@@ -66,7 +66,7 @@ export function ShareMenu({ prefs, setPrefs, onStart, onClose }: Props) {
           <p className="option-hint">{AUDIO_HINT}</p>
         </>
       ) : (
-        <p className="option-hint">Essa versão do app não manda áudio no Linux. Baixe a versão nova pra mandar o áudio do jogo.</p>
+        <p className="option-hint">Essa versão do app não manda áudio aqui.</p>
       )}
       <button className="btn primary full" onClick={onStart}>
         Escolher tela ou janela

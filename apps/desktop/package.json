@@ -2,7 +2,7 @@
   "name": "@simple-call/desktop",
   "private": true,
   "version": "0.5.1",
-  "description": "Simple Call para Windows e Linux (Electron).",
+  "description": "Simple Call para Windows (Electron).",
   "author": {
     "name": "Antonio Inácio",
     "email": "165093179+antonioinaciodev@users.noreply.github.com"

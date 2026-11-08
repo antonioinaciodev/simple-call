@@ -15,12 +15,11 @@ contextBridge.exposeInMainWorld('simplecallDesktop', {
   // Miniatura de cada tela e janela (id → imagem), mais lenta: vem depois da lista.
   listThumbnails: (): Promise<Record<string, string>> => ipcRenderer.invoke('sources:thumbnails'),
   // Guarda a escolha; o getDisplayMedia logo em seguida transmite ela.
-  // audio: true (áudio do PC inteiro) ou { mode: 'none' | 'app' | 'system' | 'stream', streamId? }.
+  // audio: true (áudio do PC inteiro) ou { mode: 'none' | 'app' | 'system' }.
   selectSource: (id: string, name: string, audio: unknown): Promise<boolean> =>
     ipcRenderer.invoke('sources:select', id, name, audio),
-  // Áudio só do jogo: o que dá pra capturar, apps tocando (Linux), começar e parar.
+  // Áudio só do jogo: o que dá pra capturar, começar e parar.
   audioSupport: () => ipcRenderer.invoke('audio:support'),
-  audioApps: () => ipcRenderer.invoke('audio:apps'),
   startAudio: () => ipcRenderer.invoke('audio:start'),
   stopAudio: () => ipcRenderer.invoke('audio:stop'),
   // Pedaços de PCM float32 (2 canais, 48 kHz). Devolve a função que para de ouvir.
