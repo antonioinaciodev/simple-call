@@ -18,6 +18,13 @@ Pra publicar uma versão nova, veja [docs/APPS.md](docs/APPS.md#gerar-uma-releas
 - A `dev` pode ter um site de teste próprio (`simplecall-dev`), separado do site de todo mundo.
 - Os apps de Linux e iOS saíram: não funcionavam direito e deixavam cada versão mais lenta de gerar. No Linux, no Mac e no iPhone o Simple Call segue funcionando no navegador.
 
+**Transmissão só abre com "Assistir"** ([#25](https://github.com/antonioinaciodev/simple-call/pull/25))
+
+- Quando alguém começa a transmitir, aparece um quadro "Fulano está transmitindo" com o botão **Assistir**, e um som curto avisa. Ninguém vê nem ouve nada antes de clicar.
+- Quem não clicou não recebe a transmissão, então ela só gasta a internet e a placa de vídeo de quem transmite pra quem está assistindo.
+- Dá pra parar de assistir pelo botão no canto da transmissão. Quando ela acaba, a próxima volta a pedir o clique.
+- Quem transmite vê quantas pessoas estão assistindo.
+
 ## v0.5.1 (31/10/2026)
 
 **Tela cheia de verdade no celular** ([#23](https://github.com/antonioinaciodev/simple-call/pull/23))
