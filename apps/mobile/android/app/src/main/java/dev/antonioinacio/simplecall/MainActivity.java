@@ -2,8 +2,13 @@ package dev.antonioinacio.simplecall;
 
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.view.WindowManager;
 import android.webkit.WebView;
+
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 
 import com.getcapacitor.BridgeActivity;
 
@@ -19,6 +24,16 @@ public class MainActivity extends BridgeActivity {
         // Plugins do próprio app precisam ser registrados antes do super.onCreate.
         registerPlugin(CallAudioPlugin.class);
         super.onCreate(savedInstanceState);
+        // Tela cheia de verdade (o site esconde as barras pelo plugin SystemBars):
+        // puxar da borda mostra as barras só por um instante, e a imagem pode ocupar
+        // o espaço do entalhe da câmera (o site deixa os botões fora dele).
+        WindowInsetsControllerCompat bars = WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
+        bars.setSystemBarsBehavior(WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            WindowManager.LayoutParams attrs = getWindow().getAttributes();
+            attrs.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+            getWindow().setAttributes(attrs);
+        }
     }
 
     // Link de convite: o https://.../abc-defg-hij (App Links, sem perguntar nada) ou o

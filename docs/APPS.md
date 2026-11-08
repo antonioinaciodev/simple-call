@@ -143,6 +143,12 @@ No Android Studio, ligue o celular com a depuração USB ativada e clique em ▶
     leva pra call, inclusive com o app já aberto.
   - **iOS:** o mesmo `simplecall://` (Info.plist e `SceneDelegate.swift`). O link https direto
     (Universal Links) precisaria da conta paga da Apple.
+- **Tela cheia no celular:** o WebView do Capacitor não deixa a página sair do espaço dela, então
+  no app a tela cheia da transmissão é o quadro cobrindo a tela por CSS (`useFullscreen` em
+  `Tile.tsx`), e as barras do sistema somem pelo plugin `SystemBars`, que já vem no Capacitor
+  (`setFullscreenBars` em `native.ts`). A barra de cima fica escondida no app todo. O
+  `MainActivity.java` faz as barras voltarem só por um instante quando puxadas da borda e deixa
+  a imagem ocupar o entalhe da câmera; o CSS usa `--safe-area-inset-*` pra manter os botões fora dele.
 - **Site** (`apps/web/src/lib/native.ts`): detecta se está dentro de um app e usa essas pontes. No
   navegador nada muda. Dentro dos apps a página inicial mostra só a entrada da call (sem os
   downloads), e a abertura animada fica no `apps/web/index.html`, em CSS puro, pra aparecer antes

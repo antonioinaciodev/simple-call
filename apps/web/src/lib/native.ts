@@ -57,6 +57,46 @@ interface CallAudioPlugin {
 const capPlatform = (globalThis as { Capacitor?: { getPlatform?: () => string } }).Capacitor?.getPlatform?.();
 export const mobilePlatform = capPlatform === 'android' || capPlatform === 'ios' ? capPlatform : null;
 
+// ---------- barras do sistema (celular) ----------
+
+// Plugin SystemBars, que já vem no Capacitor 8 (funciona nos apps já instalados).
+type CapacitorCore = typeof import('@capacitor/core');
+let bars: Promise<{ plugin: CapacitorCore['SystemBars']; type: CapacitorCore['SystemBarType'] } | null> | null = null;
+let barsFullscreen = false;
+
+// No app do celular a barra de cima (hora, bateria) fica escondida o tempo todo; na tela cheia
+// da transmissão some também a de baixo (navegação no Android, indicador de início no iPhone).
+// Puxando da borda elas aparecem por um instante.
+function applyBars() {
+  if (!mobilePlatform) return;
+  bars ??= import('@capacitor/core')
+    .then(({ SystemBars, SystemBarType }) => ({ plugin: SystemBars, type: SystemBarType }))
+    .catch(() => null);
+  const full = barsFullscreen;
+  void bars.then(async (ref) => {
+    if (!ref) return;
+    try {
+      if (full) await ref.plugin.hide();
+      else await Promise.all([ref.plugin.hide({ bar: ref.type.StatusBar }), ref.plugin.show({ bar: ref.type.NavigationBar })]);
+    } catch {
+      // App antigo sem o plugin: fica como está.
+    }
+  });
+}
+
+export function setFullscreenBars(full: boolean) {
+  barsFullscreen = full;
+  applyBars();
+}
+
+if (mobilePlatform) {
+  applyBars();
+  // Voltando de outro app, o sistema pode ter mostrado as barras de novo.
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) applyBars();
+  });
+}
+
 // ---------- site no navegador ----------
 
 // Aberto dentro de um dos apps (desktop ou celular)?

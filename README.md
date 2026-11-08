@@ -14,7 +14,7 @@ Chamadas leves pra jogar e transmitir com os amigos. Estilo Meet: você cria a c
 
 ## Baixar
 
-Versão atual: **v0.5.0** ([o que mudou](CHANGELOG.md)). Dá pra usar direto no [navegador](https://simplecall.antonioinaciodev.workers.dev), sem instalar nada, ou baixar o app:
+Versão atual: **v0.5.1** ([o que mudou](CHANGELOG.md)). Dá pra usar direto no [navegador](https://simplecall.antonioinaciodev.workers.dev), sem instalar nada, ou baixar o app:
 
 | Sistema | Download | Observação |
 | --- | --- | --- |

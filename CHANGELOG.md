@@ -7,6 +7,16 @@ do site sozinhos a cada merge no `main`, sem precisar baixar de novo.
 Os instaladores de cada versão estão nas [Releases](https://github.com/antonioinaciodev/simple-call/releases).
 Pra publicar uma versão nova, veja [docs/APPS.md](docs/APPS.md#gerar-uma-release).
 
+## v0.5.1 (31/10/2026)
+
+**Tela cheia de verdade no celular** ([#23](https://github.com/antonioinaciodev/simple-call/pull/23))
+
+- Apps do celular: a barra de cima (hora, bateria) some, e a tela cheia da transmissão ocupa a tela inteira, sem a barra de cima nem a de baixo. Puxando da borda elas aparecem por um instante.
+- No Android, o botão voltar sai da tela cheia em vez de sair da call.
+- Em todo lugar (PC, celular e navegador): na tela cheia, o volume da transmissão e o botão de sair só aparecem com um clique ou toque na imagem e somem sozinhos depois de 3 segundos. No PC o cursor também some.
+- Os botões ficam fora do entalhe da câmera e das bordas arredondadas do celular.
+- Esconder as barras já vale pros apps instalados assim que o site atualizar; elas voltarem só por um instante quando puxadas da borda precisa do app 0.5.1.
+
 ## v0.5.0 (31/10/2026)
 
 **Link de convite abre direto no app** ([#22](https://github.com/antonioinaciodev/simple-call/pull/22))
