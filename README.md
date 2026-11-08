@@ -4,7 +4,7 @@ Chamadas leves pra jogar e transmitir com os amigos. Estilo Meet: você cria a c
 
 Áudio, vídeo e chat vão **direto entre os navegadores** (WebRTC P2P). A hospedagem fica toda no plano grátis da Cloudflare.
 
-**[Abrir no navegador](https://simplecall.antonioinaciodev.workers.dev)** · [Baixar os apps](#baixar) · [Novidades](CHANGELOG.md) · [Como funciona](#como-funciona) · [Rodar no PC](#rodando-no-seu-pc) · [Colocar no ar](docs/DEPLOY.md) · [Arquitetura](docs/ARQUITETURA.md)
+**[Abrir no navegador](https://simplecall.antonioinaciodev.workers.dev/app)** · [Baixar os apps](#baixar) · [Novidades](CHANGELOG.md) · [Como funciona](#como-funciona) · [Rodar no PC](#rodando-no-seu-pc) · [Colocar no ar](docs/DEPLOY.md) · [Arquitetura](docs/ARQUITETURA.md)
 
 [![CI](https://github.com/antonioinaciodev/simple-call/actions/workflows/ci.yml/badge.svg)](https://github.com/antonioinaciodev/simple-call/actions/workflows/ci.yml)
 [![Versão](https://img.shields.io/github/v/release/antonioinaciodev/simple-call?label=vers%C3%A3o)](https://github.com/antonioinaciodev/simple-call/releases/latest)

@@ -128,8 +128,8 @@ No Android Studio, ligue o celular com a depuração USB ativada e clique em ▶
   `MainActivity.java` faz as barras voltarem só por um instante quando puxadas da borda e deixa
   a imagem ocupar o entalhe da câmera; o CSS usa `--safe-area-inset-*` pra manter os botões fora dele.
 - **Site** (`apps/web/src/lib/native.ts`): detecta se está dentro de um app e usa essas pontes. No
-  navegador nada muda. Dentro dos apps a página inicial mostra só a entrada da call (sem os
-  downloads), e a abertura animada fica no `apps/web/index.html`, em CSS puro, pra aparecer antes
+  navegador nada muda. No navegador a raiz (`/`) é a página de apresentação (`Landing.tsx`,
+  com os downloads) e o app fica em `/app`; dentro dos apps a raiz já é o app (`APP_HOME`), e a abertura animada fica no `apps/web/index.html`, em CSS puro, pra aparecer antes
   de carregar qualquer JavaScript. O `@capacitor/core` só é baixado dentro do app do celular.
 
 ## Limitações conhecidas
