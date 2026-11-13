@@ -342,7 +342,19 @@ select.input {
   text-decoration-color: var(--text);
 }
 
-/* Sala fixa: formulário que abre no lugar do botão. */
+/* Nova call e Nova sala fixa lado a lado; a call rápida é a ação principal. */
+.home-create {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 8px;
+}
+
+.btn.active {
+  border-color: var(--muted);
+  background: var(--surface-3);
+}
+
+/* Sala fixa: formulário que abre embaixo dos botões. */
 .fixed-form {
   display: flex;
   flex-direction: column;
@@ -475,23 +487,27 @@ select.input {
   animation: pulse 2.4s ease-in-out infinite;
 }
 
-.recent-remove {
+.recent-action {
   flex: none;
   color: var(--muted);
   opacity: 0;
   transition: opacity 120ms;
 }
 
-.recent-item:hover .recent-remove,
-.recent-remove:focus-visible {
+.recent-item:hover .recent-action,
+.recent-action:focus-visible {
   opacity: 1;
 }
 
-/* No toque não tem hover: o X fica sempre à mostra, só mais apagado. */
+/* No toque não tem hover: alfinete e X ficam sempre à mostra, só mais apagados. */
 @media (hover: none) {
-  .recent-remove {
+  .recent-action {
     opacity: 0.6;
   }
+}
+
+.recent + .recent {
+  margin-top: 28px;
 }
 
 /* Na pré-entrada e no topo da call: nome da sala fixa. */

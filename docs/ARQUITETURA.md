@@ -21,7 +21,7 @@ navegador <═══════════ WebRTC P2P (áudio, vídeo, chat) �
 | Rota | O que faz |
 | --- | --- |
 | `POST /api/rooms` | Sem corpo: gera o código de uma call rápida (`abc-defg-hij`, 26^10 combinações), que não é salva em lugar nenhum. Com `{ "name": "Galera do LoL" }`: cria a sala fixa `sala/galera-do-lol` (409 se o nome já foi usado). |
-| `GET /api/rooms/status?rooms=a,b` | Quantas pessoas (e quem) estão em cada sala, até 12 por vez. Nas salas fixas também diz o nome e se ela existe. Usado pela lista de recentes e pela tela antes de entrar. |
+| `GET /api/rooms/status?rooms=a,b` | Quantas pessoas (e quem) estão em cada sala, até 16 por vez. Nas salas fixas também diz o nome e se ela existe. Usado pela lista de recentes e pela tela antes de entrar. |
 | `GET /api/ice` | Devolve os servidores STUN e, se configurado, credenciais temporárias do TURN da Cloudflare. |
 | `GET /api/signal?room=…&name=…` | Abre o WebSocket de sinalização da call. `room` é o código ou `sala/nome`. |
 | `GET /api/health` | Responde `{ ok: true }`. |

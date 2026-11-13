@@ -1,4 +1,4 @@
-import { ArrowLeft, Clock, Hash, X } from 'lucide-react';
+import { ArrowLeft, Clock, Hash, Pin, PinOff, X } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { useRoomsStatus } from '../hooks/useRoomsStatus';
 import {
@@ -14,7 +14,7 @@ import {
   type RoomStatus,
 } from '../lib/api';
 import { inApp } from '../lib/native';
-import { forgetRoom, loadRecent, rememberRoom, type RecentRoom } from '../lib/recent';
+import { forgetRoom, loadRecent, rememberRoom, setPinned, type RecentRoom } from '../lib/recent';
 import { UpdateNotice } from './UpdateNotice';
 
 // Início do app: criar uma call rápida ou uma sala fixa, entrar numa, ou voltar pra uma das
@@ -24,6 +24,7 @@ export function Home({ navigate }: { navigate: (to: string) => void }) {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [recent, setRecent] = useState(loadRecent);
+  const [fixedOpen, setFixedOpen] = useState(false);
   const { status, loaded } = useRoomsStatus(recent.map((r) => r.room));
 
   async function newCall() {
@@ -57,6 +58,32 @@ export function Home({ navigate }: { navigate: (to: string) => void }) {
     setRecent(loadRecent());
   }
 
+  function pin(room: string, pinned: boolean) {
+    setPinned(room, pinned);
+    setRecent(loadRecent());
+  }
+
+  const pinned = recent.filter((r) => r.pinned);
+  const others = recent.filter((r) => !r.pinned);
+  const section = (title: string, list: RecentRoom[]) => (
+    <section className="recent" aria-label={title}>
+      <h2 className="recent-title muted small">{title}</h2>
+      <ul>
+        {list.map((r) => (
+          <RecentItem
+            key={r.room}
+            recent={r}
+            status={status[r.room]}
+            loaded={loaded}
+            open={() => navigate(`/${r.room}`)}
+            remove={() => remove(r.room)}
+            pin={(on) => pin(r.room, on)}
+          />
+        ))}
+      </ul>
+    </section>
+  );
+
   return (
     <div className="center-page">
       <div className="home">
@@ -67,9 +94,15 @@ export function Home({ navigate }: { navigate: (to: string) => void }) {
         <p className="muted">Sem conta. Cria uma call rápida ou uma sala fixa pro grupo e manda o link.</p>
 
         <div className="home-actions">
-          <button className="btn primary" onClick={newCall} disabled={busy}>
-            {busy ? 'Criando…' : 'Nova call'}
-          </button>
+          <div className="home-create">
+            <button className="btn primary" onClick={newCall} disabled={busy}>
+              {busy ? 'Criando…' : 'Nova call'}
+            </button>
+            <button className={`btn ${fixedOpen ? 'active' : ''}`} type="button" onClick={() => setFixedOpen((o) => !o)} aria-expanded={fixedOpen}>
+              Nova sala fixa
+            </button>
+          </div>
+          {fixedOpen && <NewFixedRoom navigate={navigate} onClose={() => setFixedOpen(false)} />}
           <form className="join" onSubmit={join}>
             <input
               className="input"
@@ -85,27 +118,12 @@ export function Home({ navigate }: { navigate: (to: string) => void }) {
               Entrar
             </button>
           </form>
-          <NewFixedRoom navigate={navigate} />
         </div>
         {error && <p className="error">{error}</p>}
 
-        {recent.length > 0 && (
-          <section className="recent" aria-label="Salas recentes">
-            <h2 className="recent-title muted small">Recentes</h2>
-            <ul>
-              {recent.map((r) => (
-                <RecentItem
-                  key={r.room}
-                  recent={r}
-                  status={status[r.room]}
-                  loaded={loaded}
-                  open={() => navigate(`/${r.room}`)}
-                  remove={() => remove(r.room)}
-                />
-              ))}
-            </ul>
-          </section>
-        )}
+        {/* "Fixos" só aparece depois do primeiro alfinete. */}
+        {pinned.length > 0 && section('Fixos', pinned)}
+        {others.length > 0 && section('Recentes', others)}
 
         {!inApp && (
           <p className="home-back muted small">
@@ -128,22 +146,13 @@ export function Home({ navigate }: { navigate: (to: string) => void }) {
 }
 
 // Sala fixa: link com nome que vale pra sempre (/sala/galera), pro grupo saber onde entrar.
-function NewFixedRoom({ navigate }: { navigate: (to: string) => void }) {
-  const [open, setOpen] = useState(false);
+function NewFixedRoom({ navigate, onClose }: { navigate: (to: string) => void; onClose: () => void }) {
   const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [taken, setTaken] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const slug = slugify(name);
   const valid = isSlug(slug);
-
-  if (!open) {
-    return (
-      <button className="btn ghost" type="button" onClick={() => setOpen(true)}>
-        <Hash size={16} /> Criar sala fixa com nome
-      </button>
-    );
-  }
 
   async function create(e: FormEvent) {
     e.preventDefault();
@@ -202,7 +211,7 @@ function NewFixedRoom({ navigate }: { navigate: (to: string) => void }) {
         <button className="btn primary" type="submit" disabled={busy || !valid}>
           {busy ? 'Criando…' : 'Criar sala'}
         </button>
-        <button className="btn ghost" type="button" onClick={() => setOpen(false)}>
+        <button className="btn ghost" type="button" onClick={onClose}>
           Cancelar
         </button>
       </div>
@@ -232,9 +241,10 @@ interface ItemProps {
   loaded: boolean;
   open: () => void;
   remove: () => void;
+  pin: (pinned: boolean) => void;
 }
 
-function RecentItem({ recent, status, loaded, open, remove }: ItemProps) {
+function RecentItem({ recent, status, loaded, open, remove, pin }: ItemProps) {
   const named = isNamedRoom(recent.room);
   const label = named ? (status?.name ?? recent.name ?? roomSlug(recent.room)) : recent.room;
   const count = status?.count ?? 0;
@@ -256,7 +266,16 @@ function RecentItem({ recent, status, loaded, open, remove }: ItemProps) {
           {presence}
         </span>
       </button>
-      <button type="button" className="icon-btn small ghost recent-remove" onClick={remove} title="Tirar da lista" aria-label={`Tirar ${label} da lista`}>
+      <button
+        type="button"
+        className={`icon-btn small ghost recent-action ${recent.pinned ? 'pinned' : ''}`}
+        onClick={() => pin(!recent.pinned)}
+        title={recent.pinned ? 'Tirar dos fixos' : 'Fixar no topo'}
+        aria-label={recent.pinned ? `Tirar ${label} dos fixos` : `Fixar ${label} no topo`}
+      >
+        {recent.pinned ? <PinOff size={14} /> : <Pin size={14} />}
+      </button>
+      <button type="button" className="icon-btn small ghost recent-action recent-remove" onClick={remove} title="Tirar da lista" aria-label={`Tirar ${label} da lista`}>
         <X size={14} />
       </button>
     </li>
