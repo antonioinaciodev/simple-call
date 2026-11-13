@@ -22,7 +22,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- Link de convite (https://.../abc-defg-hij) abre direto no app. O site publica
+            <!-- Link de convite (https://.../abc-defg-hij ou /sala/galera) abre direto no app. O site publica
                  /.well-known/assetlinks.json com a impressão digital da chave do app, e o Android
                  confere na instalação; sem isso ele abriria o navegador. -->
             <intent-filter android:autoVerify="true">
@@ -33,6 +33,8 @@
                     android:scheme="https"
                     android:host="simplecall.antonioinaciodev.workers.dev"
                     android:pathPattern="/...-....-..." />
+                <!-- Sala fixa: https://.../sala/galera -->
+                <data android:pathPrefix="/sala/" />
             </intent-filter>
 
             <!-- simplecall://abc-defg-hij: o botão "Abrir no app" do site. -->

@@ -24,3 +24,37 @@ export function cleanName(value: unknown): string | null {
   const name = value.replace(/\s+/g, ' ').trim();
   return name.length >= 1 && name.length <= 32 ? name : null;
 }
+
+// ---------- salas fixas ----------
+
+// Sala fixa: um nome legível que vale pra sempre, tipo /sala/galera-do-lol. Fica guardada no
+// próprio Durable Object da sala (não precisa de banco à parte).
+const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]{1,22}[a-z0-9])$/;
+export const NAMED_PREFIX = 'sala/';
+
+// "Galera do LoL" → "galera-do-lol" (sem acento, só letras, números e hífen, até 24 caracteres).
+export function slugify(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+/, '')
+    .slice(0, 24)
+    .replace(/-+$/, '');
+}
+
+export const isSlug = (value: string) => SLUG_RE.test(value);
+
+// Toda sala tem uma "chave", que é o caminho dela no site sem a barra:
+// "abc-defg-hij" (call rápida) ou "sala/galera" (sala fixa).
+// Devolve o nome do Durable Object dela. Salas fixas ganham um prefixo pra nunca cair no
+// mesmo objeto de um código.
+export function roomObjectName(key: unknown): string | null {
+  if (isRoomCode(key)) return key;
+  if (typeof key !== 'string' || !key.startsWith(NAMED_PREFIX)) return null;
+  const slug = key.slice(NAMED_PREFIX.length);
+  return isSlug(slug) ? `sala:${slug}` : null;
+}
+
+export const isNamedRoom = (key: string) => key.startsWith(NAMED_PREFIX);

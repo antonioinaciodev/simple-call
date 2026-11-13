@@ -12,18 +12,23 @@ const PROD_URL = 'https://simplecall.antonioinaciodev.workers.dev';
 const APP_URL = new URL((!app.isPackaged && process.env.SIMPLECALL_URL) || PROD_URL);
 const APP_ORIGIN = APP_URL.origin;
 
-// Link de convite: o botão "Abrir no app" do site manda pra simplecall://abc-defg-hij.
+// Link de convite: o botão "Abrir no app" do site manda pra simplecall://abc-defg-hij
+// (call rápida) ou simplecall://sala/galera (sala fixa).
 // O Windows entrega esse endereço como argumento ao abrir o app (ou pro app que já
 // está aberto, pelo second-instance). Link https não dá: navegador de PC nunca repassa pra app.
 const SCHEME = 'simplecall';
 const CODE_RE = /^[a-z]{3}-[a-z]{4}-[a-z]{3}$/;
+const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]{1,22}[a-z0-9])$/;
 
 function callLink(argv: string[]): string | null {
   const arg = argv.find((a) => a.toLowerCase().startsWith(`${SCHEME}:`));
   if (!arg) return null;
-  // simplecall://abc-defg-hij, simplecall://call/abc-defg-hij ou simplecall:abc-defg-hij
-  const code = arg.slice(SCHEME.length + 1).split(/[/?#]/).filter(Boolean).pop()?.toLowerCase() ?? '';
-  return CODE_RE.test(code) ? new URL(`/${code}`, APP_URL).href : null;
+  // simplecall://abc-defg-hij, simplecall://call/abc-defg-hij, simplecall:abc-defg-hij
+  // ou simplecall://sala/galera
+  const parts = arg.slice(SCHEME.length + 1).split(/[?#]/)[0].toLowerCase().split('/').filter(Boolean);
+  const last = parts.pop() ?? '';
+  if (parts.pop() === 'sala' && SLUG_RE.test(last)) return new URL(`/sala/${last}`, APP_URL).href;
+  return CODE_RE.test(last) ? new URL(`/${last}`, APP_URL).href : null;
 }
 
 // O que o site pediu pra transmitir: escolhido no seletor do app logo antes do getDisplayMedia.

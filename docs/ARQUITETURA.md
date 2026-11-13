@@ -20,10 +20,17 @@ navegador <═══════════ WebRTC P2P (áudio, vídeo, chat) �
 
 | Rota | O que faz |
 | --- | --- |
-| `POST /api/rooms` | Gera um código novo (`abc-defg-hij`, 26^10 combinações). A sala não é salva: ela só existe enquanto tem alguém conectado. |
+| `POST /api/rooms` | Sem corpo: gera o código de uma call rápida (`abc-defg-hij`, 26^10 combinações), que não é salva em lugar nenhum. Com `{ "name": "Galera do LoL" }`: cria a sala fixa `sala/galera-do-lol` (409 se o nome já foi usado). |
+| `GET /api/rooms/status?rooms=a,b` | Quantas pessoas (e quem) estão em cada sala, até 12 por vez. Nas salas fixas também diz o nome e se ela existe. Usado pela lista de recentes e pela tela antes de entrar. |
 | `GET /api/ice` | Devolve os servidores STUN e, se configurado, credenciais temporárias do TURN da Cloudflare. |
-| `GET /api/signal?room=…&name=…` | Abre o WebSocket de sinalização da call. |
+| `GET /api/signal?room=…&name=…` | Abre o WebSocket de sinalização da call. `room` é o código ou `sala/nome`. |
 | `GET /api/health` | Responde `{ ok: true }`. |
+
+## Salas fixas e recentes
+
+Toda sala tem uma chave, que é o caminho dela no site: `abc-defg-hij` (call rápida) ou `sala/galera` (sala fixa). A sala fixa guarda só o nome que a pessoa deu, no armazenamento do próprio Durable Object (objeto `sala:galera`, com prefixo pra nunca bater com um código). Quem tem o link entra, igual nas calls rápidas.
+
+As salas recentes ficam só no aparelho (`localStorage`, chave `simplecall:recent`, até 8). A tela inicial pergunta quem está em cada uma a cada 20 s, e só enquanto a janela está na frente: com o jogo aberto por cima, nada é consultado.
 
 ## Sinalização
 
@@ -34,6 +41,7 @@ O Durable Object fala com cada navegador por WebSocket:
 | `welcome` | servidor → quem entrou | Logo ao conectar, com o id da pessoa, um token pra voltar com o mesmo id e a lista de quem já está na call |
 | `join` / `leave` | servidor → todos | Alguém entrou ou saiu |
 | `full` | servidor → quem entrou | A call já tem 6 pessoas |
+| `missing` | servidor → quem entrou | O link é de uma sala fixa que ninguém criou |
 | `signal` | navegador ↔ navegador | Oferta, resposta e candidatos ICE, repassados pelo servidor pro `to` indicado |
 
 Ele usa a hibernação de WebSockets: entre uma mensagem e outra o objeto sai da memória e a Cloudflare segura as conexões, então uma call parada não gasta nada. O navegador manda um ping a cada 10 s pra conexão não cair por inatividade, e a resposta automática (`setWebSocketAutoResponse`) não acorda o objeto.

@@ -1,6 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 import type { Env } from './index';
-import { cleanName } from './rooms';
+import { cleanName, isNamedRoom } from './rooms';
 
 // Sinalização de uma call: apresenta as pessoas e repassa oferta, resposta e candidatos ICE.
 // Áudio, vídeo e chat vão direto entre os navegadores e nunca passam por aqui.
@@ -28,6 +28,23 @@ interface Away extends Attachment {
 }
 
 const AWAY = 'away:';
+// Sala fixa: nome que a pessoa deu ao criar. Calls rápidas não guardam nada.
+const INFO = 'info';
+
+interface Info {
+  name: string;
+  created: number;
+}
+
+export interface RoomStatus {
+  // Quantas pessoas estão na sala, contando quem caiu e ainda pode voltar.
+  count: number;
+  names: string[];
+  max: number;
+  // Só nas salas fixas: o nome bonito e se ela existe mesmo.
+  name?: string;
+  exists?: boolean;
+}
 
 export class Room extends DurableObject<Env> {
   constructor(ctx: DurableObjectState, env: Env) {
@@ -48,11 +65,31 @@ export class Room extends DurableObject<Env> {
     return [...(await this.ctx.storage.list<Away>({ prefix: AWAY })).values()];
   }
 
+  // Cria a sala fixa com esse nome. Falso se alguém já criou antes.
+  async claim(name: string): Promise<boolean> {
+    if (await this.ctx.storage.get<Info>(INFO)) return false;
+    await this.ctx.storage.put<Info>(INFO, { name, created: Date.now() });
+    return true;
+  }
+
+  async status(): Promise<RoomStatus> {
+    const [info, away] = await Promise.all([this.ctx.storage.get<Info>(INFO), this.away()]);
+    const names = [...this.online().map((p) => p.name), ...away.map((a) => a.name)];
+    return { count: names.length, names, max: MAX_PEERS, ...(info ? { name: info.name, exists: true } : {}) };
+  }
+
   async fetch(req: Request): Promise<Response> {
     const params = new URL(req.url).searchParams;
     const name = cleanName(params.get('name')) ?? 'Sem nome';
     const [client, server] = Object.values(new WebSocketPair());
     this.ctx.acceptWebSocket(server);
+
+    // Sala fixa que ninguém criou: não deixa virar sala por engano (link digitado errado).
+    if (isNamedRoom(params.get('room') ?? '') && !(await this.ctx.storage.get<Info>(INFO))) {
+      server.send(JSON.stringify({ type: 'missing' }));
+      server.close(1000, 'não existe');
+      return new Response(null, { status: 101, webSocket: client });
+    }
 
     const back = await this.resume(params.get('id'), params.get('token'));
     const online = this.online();

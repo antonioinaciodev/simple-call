@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { Home } from './components/Home';
 import { Landing } from './components/Landing';
-import { parseRoomCode } from './lib/api';
+import { roomFromPath } from './lib/api';
 import { inApp } from './lib/native';
 import { loadPrefs, savePrefs, type Prefs } from './lib/prefs';
 
@@ -43,11 +43,11 @@ export function App() {
 
   // Navegador: / é a apresentação e /app é o app. Nos apps instalados a raiz já é o app.
   if (path === '/' && !inApp) return <Landing navigate={navigate} />;
-  const code = path === '/' || path === '/app' ? null : parseRoomCode(path);
-  if (!code) return <Home navigate={navigate} />;
+  const room = roomFromPath(path);
+  if (!room) return <Home navigate={navigate} />;
   return (
     <Suspense fallback={<div className="center-page muted">Carregando…</div>}>
-      <RoomPage key={code} code={code} prefs={prefs} setPrefs={setPrefs} navigate={navigate} />
+      <RoomPage key={room} room={room} prefs={prefs} setPrefs={setPrefs} navigate={navigate} />
     </Suspense>
   );
 }
