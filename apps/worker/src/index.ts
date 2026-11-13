@@ -1,9 +1,10 @@
-import { cleanName, isRoomCode, newRoomCode } from './rooms';
+import type { Room } from './room';
+import { cleanName, NAMED_PREFIX, newRoomCode, roomObjectName, slugify, isSlug } from './rooms';
 
 export { Room } from './room';
 
 export interface Env {
-  ROOMS: DurableObjectNamespace;
+  ROOMS: DurableObjectNamespace<Room>;
   ASSETS: Fetcher;
   // TURN da Cloudflare (opcional), configurado como segredo do Worker.
   CF_TURN_KEY_ID?: string;
@@ -44,6 +45,43 @@ const ASSET_LINKS = [
   },
 ];
 
+const roomStub = (env: Env, objectName: string) => env.ROOMS.get(env.ROOMS.idFromName(objectName));
+
+async function createNamedRoom(env: Env, value: unknown) {
+  const name = cleanName(value);
+  const slug = name ? slugify(name) : '';
+  if (!name || !isSlug(slug)) {
+    return Response.json({ error: 'Escolha um nome com pelo menos 3 letras ou números.' }, { status: 400 });
+  }
+  const room = NAMED_PREFIX + slug;
+  const taken = !(await roomStub(env, roomObjectName(room)!).claim(name));
+  if (taken) return Response.json({ error: `Já existe a sala /${room}. Escolha outro nome.`, room }, { status: 409 });
+  return Response.json({ room, name });
+}
+
+// Cada sala da lista é um Durable Object; perguntar a ele é rápido e não acorda nada que
+// esteja em call (as conexões continuam hibernando). Limite pra ninguém pedir mil de uma vez.
+const STATUS_MAX = 12;
+
+async function roomsStatus(env: Env, list: string | null) {
+  const keys = [...new Set((list ?? '').split(',').filter(Boolean))].slice(0, STATUS_MAX);
+  const entries = await Promise.all(
+    keys.map(async (key) => {
+      const objectName = roomObjectName(key);
+      if (!objectName) return null;
+      try {
+        return [key, await roomStub(env, objectName).status()] as const;
+      } catch {
+        return null;
+      }
+    }),
+  );
+  return Response.json(
+    { rooms: Object.fromEntries(entries.filter((e) => e !== null)) },
+    { headers: { 'Cache-Control': 'no-store' } },
+  );
+}
+
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const url = new URL(req.url);
@@ -54,16 +92,23 @@ export default {
 
     if (url.pathname === '/api/health') return Response.json({ ok: true });
 
-    // Gera o código de uma call nova. A sala só existe enquanto tem alguém na sinalização.
-    if (url.pathname === '/api/rooms' && req.method === 'POST') return Response.json({ room: newRoomCode() });
+    // Sem corpo: gera o código de uma call rápida. Com { name }: cria uma sala fixa com esse nome.
+    if (url.pathname === '/api/rooms' && req.method === 'POST') {
+      const body = (await req.json().catch(() => null)) as { name?: unknown } | null;
+      if (body?.name === undefined) return Response.json({ room: newRoomCode() });
+      return createNamedRoom(env, body.name);
+    }
+
+    // Quantas pessoas estão em cada sala (a lista de recentes da tela inicial pergunta isso).
+    if (url.pathname === '/api/rooms/status') return roomsStatus(env, url.searchParams.get('rooms'));
 
     if (url.pathname === '/api/ice') return Response.json({ iceServers: await iceServers(env) });
 
     // Cada call é um Durable Object: todo mundo da mesma call cai na mesma instância,
     // que guarda os WebSockets e repassa as mensagens de conexão.
     if (url.pathname === '/api/signal') {
-      const room = url.searchParams.get('room');
-      if (!isRoomCode(room) || !cleanName(url.searchParams.get('name'))) return new Response('Call ou nome inválido.', { status: 400 });
+      const room = roomObjectName(url.searchParams.get('room'));
+      if (!room || !cleanName(url.searchParams.get('name'))) return new Response('Call ou nome inválido.', { status: 400 });
       if (req.headers.get('Upgrade') !== 'websocket') return new Response('Esperava um WebSocket.', { status: 426 });
       return env.ROOMS.get(env.ROOMS.idFromName(room)).fetch(req);
     }

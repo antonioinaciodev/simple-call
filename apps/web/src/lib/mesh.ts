@@ -88,6 +88,7 @@ type ServerMsg =
   | { type: 'join'; id: string; name: string }
   | { type: 'leave'; id: string }
   | { type: 'full' }
+  | { type: 'missing' }
   | { type: 'signal'; from: string; data: SignalData };
 
 // reset: a conexão comigo travou e recomecei do zero; feche a sua e espere minha nova oferta.
@@ -442,6 +443,10 @@ export class Mesh {
       case 'full':
         this.closed = true;
         this.opts.onClose('A call está cheia.');
+        break;
+      case 'missing':
+        this.closed = true;
+        this.opts.onClose('Essa sala fixa não existe. Confira o link ou crie ela no início.');
         break;
       case 'signal':
         {

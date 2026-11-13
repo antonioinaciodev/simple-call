@@ -1,12 +1,19 @@
 import { ArrowLeft, Mic, MicOff, Video, VideoOff } from 'lucide-react';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { SetPrefs } from '../App';
+import { isNamedRoom, type RoomStatus } from '../lib/api';
 import { appLink, detectOs, inApp } from '../lib/native';
 import type { Prefs } from '../lib/prefs';
 import { CopyLinkButton } from './CopyLinkButton';
 
 interface Props {
-  code: string;
+  room: string;
+  // Nome pra mostrar: o da sala fixa ou o código da call rápida.
+  title: string;
+  status?: RoomStatus;
+  // Link de sala fixa que ninguém criou ainda.
+  missing: boolean;
+  onCreate: () => Promise<void>;
   prefs: Prefs;
   setPrefs: SetPrefs;
   onJoin: () => Promise<void>;
@@ -23,7 +30,17 @@ function mediaError(err: unknown, what: string) {
 
 const stopAll = (s: MediaStream) => s.getTracks().forEach((t) => t.stop());
 
-export function PreJoin({ code, prefs, setPrefs, onJoin, onBack }: Props) {
+// Quem já está lá dentro, pra saber se vale entrar agora.
+function whoIsThere(status?: RoomStatus) {
+  if (!status) return '';
+  const { count, names, max } = status;
+  if (count === 0) return 'Ninguém na call agora.';
+  if (count >= max) return `A call está cheia (${count} de ${max}).`;
+  const list = names.length <= 1 ? names[0] : `${names.slice(0, -1).join(', ')} e ${names[names.length - 1]}`;
+  return count === 1 ? `${list} está na call.` : `${list} estão na call.`;
+}
+
+export function PreJoin({ room, title, status, missing, onCreate, prefs, setPrefs, onJoin, onBack }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [camError, setCamError] = useState('');
   const [micError, setMicError] = useState('');
@@ -90,7 +107,21 @@ export function PreJoin({ code, prefs, setPrefs, onJoin, onBack }: Props) {
     }
   }
 
+  async function create() {
+    setBusy(true);
+    setError('');
+    try {
+      await onCreate();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Não foi possível criar a sala.');
+    }
+    setBusy(false);
+  }
+
   const initial = prefs.name.trim().charAt(0).toUpperCase() || '?';
+  const named = isNamedRoom(room);
+  const full = !!status && status.count >= status.max;
+  const who = whoIsThere(status);
 
   return (
     <div className="center-page">
@@ -124,11 +155,21 @@ export function PreJoin({ code, prefs, setPrefs, onJoin, onBack }: Props) {
         </div>
 
         <form className="prejoin-form" onSubmit={submit}>
-          <p className="muted small">Entrando em</p>
+          <p className="muted small">{named ? 'Entrando na sala fixa' : 'Entrando em'}</p>
           <div className="code-row">
-            <span className="code">{code}</span>
+            <span className={named ? 'room-title' : 'code'}>{title}</span>
             <CopyLinkButton />
           </div>
+          {missing ? (
+            <p className="who muted small">Essa sala fixa ainda não existe. Quer criar ela agora? O link fica valendo pra sempre.</p>
+          ) : (
+            who && (
+              <p className="who muted small">
+                {status!.count > 0 && <span className="presence-dot" />}
+                {who}
+              </p>
+            )
+          )}
           <label className="field">
             <span>Seu nome</span>
             <input
@@ -140,16 +181,22 @@ export function PreJoin({ code, prefs, setPrefs, onJoin, onBack }: Props) {
               placeholder="Como seus amigos te chamam"
             />
           </label>
-          <button className="btn primary" type="submit" disabled={busy || !prefs.name.trim()}>
-            {busy ? 'Entrando…' : 'Entrar na call'}
-          </button>
+          {missing ? (
+            <button className="btn primary" type="button" onClick={create} disabled={busy}>
+              {busy ? 'Criando…' : 'Criar a sala'}
+            </button>
+          ) : (
+            <button className="btn primary" type="submit" disabled={busy || full || !prefs.name.trim()}>
+              {busy ? 'Entrando…' : 'Entrar na call'}
+            </button>
+          )}
           <button className="btn ghost" type="button" onClick={onBack}>
             <ArrowLeft size={16} />
             Voltar ao início
           </button>
           {!inApp && detectOs() && (
             <p className="open-in-app muted small">
-              Tem o app? <a href={appLink(code)}>Abrir no app</a>
+              Tem o app? <a href={appLink(room)}>Abrir no app</a>
             </p>
           )}
           {camError && <p className="error">{camError}</p>}

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import type { SetPrefs } from '../App';
 import { useSpeaking } from '../hooks/useSpeaking';
-import { getIceServers } from '../lib/api';
+import { getIceServers, isNamedRoom } from '../lib/api';
 import { startAppAudio } from '../lib/desktopAudio';
 import { desktop, withCallAudio } from '../lib/native';
 import { Mesh, type ChatMessage } from '../lib/mesh';
@@ -17,7 +17,9 @@ import { Stage } from './Stage';
 import { Stats } from './Stats';
 
 interface Props {
-  code: string;
+  room: string;
+  // Nome da sala fixa ou o código da call rápida.
+  title: string;
   prefs: Prefs;
   setPrefs: SetPrefs;
   onLeave: (reason?: string) => void;
@@ -52,7 +54,7 @@ async function capture(kind: 'audio' | 'video', constraints: MediaTrackConstrain
   return kind === 'audio' ? stream.getAudioTracks()[0] : stream.getVideoTracks()[0];
 }
 
-export function Call({ code, prefs, setPrefs, onLeave }: Props) {
+export function Call({ room, title, prefs, setPrefs, onLeave }: Props) {
   const [mesh, setMesh] = useState<Mesh | null>(null);
   const [, rerender] = useReducer((n: number) => n + 1, 0);
   const [error, setError] = useState('');
@@ -104,7 +106,7 @@ export function Call({ code, prefs, setPrefs, onLeave }: Props) {
       .then(async (iceServers) => {
         if (cancelled) return;
         m = new Mesh({
-          room: code,
+          room,
           name: p.name.trim(),
           iceServers,
           codec: p.screenCodec,
@@ -136,7 +138,7 @@ export function Call({ code, prefs, setPrefs, onLeave }: Props) {
       m?.leave();
     };
     // Conecta uma vez por entrada na call.
-  }, [code, flash, sound]);
+  }, [room, flash, sound]);
 
   const actions = useMemo<MediaActions | null>(() => {
     if (!mesh) return null;
@@ -240,7 +242,7 @@ export function Call({ code, prefs, setPrefs, onLeave }: Props) {
   return (
     <div className={`call ${panel ? 'with-panel' : ''}`}>
       <header className="call-top">
-        <span className="code">{code}</span>
+        <span className={isNamedRoom(room) ? 'room-title' : 'code'}>{title}</span>
         {mesh.serverDown && <span className="server-down">· reconectando ao servidor…</span>}
       </header>
       <main className="stage-wrap">
