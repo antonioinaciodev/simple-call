@@ -61,7 +61,7 @@ async function createNamedRoom(env: Env, value: unknown) {
 
 // Cada sala da lista é um Durable Object; perguntar a ele é rápido e não acorda nada que
 // esteja em call (as conexões continuam hibernando). Limite pra ninguém pedir mil de uma vez.
-const STATUS_MAX = 12;
+const STATUS_MAX = 16;
 
 async function roomsStatus(env: Env, list: string | null) {
   const keys = [...new Set((list ?? '').split(',').filter(Boolean))].slice(0, STATUS_MAX);
