@@ -12,12 +12,14 @@ import androidx.core.view.WindowInsetsControllerCompat;
 
 import com.getcapacitor.BridgeActivity;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
 public class MainActivity extends BridgeActivity {
     private static final String SITE = "https://simplecall.antonioinaciodev.workers.dev";
     private static final Pattern CODE = Pattern.compile("^[a-z]{3}-[a-z]{4}-[a-z]{3}$");
+    private static final Pattern SLUG = Pattern.compile("^[a-z0-9](?:[a-z0-9-]{1,22}[a-z0-9])$");
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -37,36 +39,41 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
-    // Link de convite: o https://.../abc-defg-hij (App Links, sem perguntar nada) ou o
-    // simplecall://abc-defg-hij do botão "Abrir no app" do site. Chega aqui tanto com o app
+    // Link de convite: o https://.../abc-defg-hij ou https://.../sala/galera (App Links, sem
+    // perguntar nada) ou o simplecall://... do botão "Abrir no app" do site. Chega aqui tanto com o app
     // fechado (o Capacitor repassa o intent de abertura) quanto com ele já aberto.
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
-        String code = intent == null ? null : roomCode(intent.getData());
-        if (code == null || bridge == null) return;
+        String room = intent == null ? null : roomPath(intent.getData());
+        if (room == null || bridge == null) return;
         WebView webView = bridge.getWebView();
-        String target = SITE + "/" + code;
+        String target = SITE + "/" + room;
         // Já está nessa call: só traz o app pra frente.
         if (target.equals(webView.getUrl())) return;
         webView.post(() -> webView.loadUrl(target));
     }
 
-    private static String roomCode(Uri uri) {
+    // Caminho da sala no site: "abc-defg-hij" (call rápida) ou "sala/galera" (sala fixa).
+    private static String roomPath(Uri uri) {
         if (uri == null) return null;
         String scheme = uri.getScheme();
-        String code;
+        List<String> parts = new ArrayList<>();
         if ("simplecall".equals(scheme)) {
-            // simplecall://abc-defg-hij ou simplecall://call/abc-defg-hij
-            List<String> path = uri.getPathSegments();
-            code = path.isEmpty() ? uri.getHost() : path.get(path.size() - 1);
+            // simplecall://abc-defg-hij, simplecall://call/abc-defg-hij ou simplecall://sala/galera:
+            // o primeiro pedaço chega como "host".
+            if (uri.getHost() != null) parts.add(uri.getHost());
+            parts.addAll(uri.getPathSegments());
         } else if ("https".equals(scheme) && Uri.parse(SITE).getHost().equals(uri.getHost())) {
-            code = uri.getLastPathSegment();
+            parts.addAll(uri.getPathSegments());
         } else {
             return null;
         }
-        if (code == null) return null;
-        code = code.toLowerCase();
-        return CODE.matcher(code).matches() ? code : null;
+        if (parts.isEmpty()) return null;
+        String last = parts.get(parts.size() - 1).toLowerCase();
+        if (parts.size() >= 2 && "sala".equalsIgnoreCase(parts.get(parts.size() - 2)) && SLUG.matcher(last).matches()) {
+            return "sala/" + last;
+        }
+        return CODE.matcher(last).matches() ? last : null;
     }
 }

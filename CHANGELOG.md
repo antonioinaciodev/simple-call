@@ -10,6 +10,16 @@ Cada PR que entra na `dev` escreve o que mudou em "Próxima versão". Ao lançar
 Os instaladores de cada versão estão nas [Releases](https://github.com/antonioinaciodev/simple-call/releases).
 Pra publicar uma versão nova, veja [docs/APPS.md](docs/APPS.md#gerar-uma-release).
 
+## Próxima versão
+
+**Salas fixas, salas recentes e quem está online**
+
+- Dá pra criar uma **sala fixa com nome**, tipo `/sala/galera-do-lol`. O link vale pra sempre, então o grupo sempre sabe onde entrar, como um canal de voz do Discord, mas sem conta.
+- A tela inicial mostra as **salas recentes** (fixas ou calls rápidas), guardadas só no seu aparelho. Um clique e você entra; o X tira da lista.
+- Cada sala da lista mostra **quantas pessoas estão na call agora e quem são**. A tela antes de entrar também mostra quem já está lá.
+- No campo "Entrar" agora dá pra digitar o nome de uma sala fixa, além do código ou do link.
+- Os apps de Windows e Android abrem os links de sala fixa direto no app a partir da próxima versão deles.
+
 ## v0.6.0 (08/11/2026)
 
 **Branch dev e apps só pra Windows e Android** ([#24](https://github.com/antonioinaciodev/simple-call/pull/24))
