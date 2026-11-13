@@ -10,9 +10,9 @@ Cada PR que entra na `dev` escreve o que mudou em "Próxima versão". Ao lançar
 Os instaladores de cada versão estão nas [Releases](https://github.com/antonioinaciodev/simple-call/releases).
 Pra publicar uma versão nova, veja [docs/APPS.md](docs/APPS.md#gerar-uma-release).
 
-## Próxima versão
+## v0.7.1 (13/11/2026)
 
-**Alfinete e seção "Fixos" na tela inicial**
+**Alfinete e seção "Fixos" na tela inicial** ([#34](https://github.com/antonioinaciodev/simple-call/pull/34))
 
 - Cada sala da lista tem um **alfinete**. A sala fixada vai pra uma seção **Fixos** no topo e fica lá até você tirar, sem sumir com o tempo. A seção só aparece depois do primeiro alfinete.
 - Os botões **Nova call** e **Nova sala fixa** ficaram lado a lado.

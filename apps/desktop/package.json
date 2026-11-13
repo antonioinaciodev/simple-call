@@ -1,7 +1,7 @@
 {
   "name": "@simple-call/desktop",
   "private": true,
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "Simple Call para Windows (Electron).",
   "author": {
     "name": "Antonio Inácio",
